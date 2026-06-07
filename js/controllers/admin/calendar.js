@@ -1,0 +1,472 @@
+import { db } from '../../db.js';
+import { AppState, setAppState } from '../../state.js';
+
+const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+const TYPE_OPTS  = [
+  { v:'operacional',  l:'Operacional' },
+  { v:'analitica',    l:'Analítica' },
+  { v:'estrategia',   l:'Estratégia' },
+  { v:'treinamento',  l:'Treinamento' },
+  { v:'reuniao',      l:'Reunião' },
+];
+const TYPE_DOT = {
+  operacional: 'bg-blue-500',
+  analitica:   'bg-violet-500',
+  estrategia:  'bg-amber-500',
+  treinamento: 'bg-emerald-500',
+  reuniao:     'bg-rose-500',
+};
+const TYPE_LABEL = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
+
+function getMondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function toDateStr(d) { return d.toISOString().split('T')[0]; }
+function weekInputVal(monday) {
+  const d = new Date(monday);
+  const jan4 = new Date(d.getFullYear(), 0, 4);
+  const startOfWeek = new Date(jan4);
+  startOfWeek.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+  const weekNum = Math.ceil(((d - startOfWeek) / 86400000 + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+function fmtDay(d) {
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+export const CalendarCtrl = {
+  _container: null,
+  _cellMemberId: null,
+  _cellDate: null,
+  _demands: [],
+  _selectedDemandId: null,
+
+  init(container) {
+    this._container = container;
+    this._render();
+  },
+
+  _weekDays() {
+    const mon = AppState.selectedWeekStart;
+    return Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(mon);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  },
+
+  _render() {
+    const { members, tasks, selectedWeekStart } = AppState;
+    const active    = members.filter(m => m.active);
+    const weekDays  = this._weekDays();
+    const weekStart = toDateStr(weekDays[0]);
+    const weekEnd   = toDateStr(weekDays[4]);
+    const weekTasks = tasks.filter(t => t.scheduled_date >= weekStart && t.scheduled_date <= weekEnd);
+
+    this._container.innerHTML = `
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <h2 class="text-xl font-semibold text-white">Cronograma</h2>
+        <div class="flex items-center gap-2">
+          <button onclick="CalendarCtrl.shiftWeek(-1)"
+            class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
+          </button>
+          <input type="week" value="${weekInputVal(selectedWeekStart)}"
+            onchange="CalendarCtrl.setWeek(this.value)"
+            class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white
+                   focus:outline-none focus:border-primary transition-colors">
+          <button onclick="CalendarCtrl.shiftWeek(1)"
+            class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">
+            <i class="fa-solid fa-chevron-right text-xs"></i>
+          </button>
+          <button onclick="CalendarCtrl.goToday()"
+            class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm transition-colors">
+            Hoje
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-auto">
+        <div class="cal-grid">
+
+          <div class="px-4 py-3 border-b border-r border-slate-700 bg-slate-800/80 sticky left-0 z-10">
+            <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Membro</span>
+          </div>
+
+          ${weekDays.map((d, i) => {
+            const isToday = toDateStr(d) === toDateStr(new Date());
+            return `
+              <div class="px-3 py-3 border-b border-l border-slate-700 text-center">
+                <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
+                <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtDay(d)}</p>
+              </div>`;
+          }).join('')}
+
+          ${active.length === 0
+            ? `<div class="col-span-6 py-12 text-center text-slate-500 text-sm">Nenhum membro ativo.</div>`
+            : active.map(m => `
+                <div class="px-4 py-3 border-t border-r border-slate-700 bg-slate-800/60 sticky left-0 z-10 flex items-center">
+                  <span class="text-sm font-medium text-white truncate">${m.name}</span>
+                </div>
+                ${weekDays.map(d => {
+                  const dateStr  = toDateStr(d);
+                  const dayTasks = weekTasks.filter(t => t.member_id === m.id && t.scheduled_date === dateStr);
+                  return `
+                    <div onclick="CalendarCtrl.openCell('${m.id}','${dateStr}')"
+                      class="border-t border-l border-slate-700 p-2 min-h-[80px] cursor-pointer hover:bg-slate-700/40 transition-colors group relative">
+                      ${dayTasks.length === 0
+                        ? `<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                             <i class="fa-solid fa-plus text-slate-500"></i>
+                           </div>`
+                        : dayTasks.map(t => `
+                            <div class="flex items-center gap-1.5 mb-1">
+                              <span class="w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[t.type] || 'bg-slate-500'} ${t.status === 'done' ? 'opacity-40' : ''}"></span>
+                              <span class="text-xs text-slate-300 truncate ${t.status === 'done' ? 'line-through opacity-40' : ''}">
+                                ${t.demand_id ? '<i class="fa-solid fa-link text-[8px] text-slate-500 mr-0.5"></i>' : ''}${t.title}
+                              </span>
+                            </div>`).join('')}
+                    </div>`;
+                }).join('')}
+              `).join('')}
+        </div>
+      </div>`;
+  },
+
+  shiftWeek(delta) {
+    const d = new Date(AppState.selectedWeekStart);
+    d.setDate(d.getDate() + delta * 7);
+    setAppState({ selectedWeekStart: d });
+    this._render();
+  },
+
+  goToday() {
+    setAppState({ selectedWeekStart: getMondayOf(new Date()) });
+    this._render();
+  },
+
+  setWeek(val) {
+    const [year, week] = val.split('-W').map(Number);
+    const jan4 = new Date(year, 0, 4);
+    const mon  = new Date(jan4);
+    mon.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1 + (week - 1) * 7);
+    mon.setHours(0, 0, 0, 0);
+    setAppState({ selectedWeekStart: mon });
+    this._render();
+  },
+
+  async openCell(memberId, dateStr) {
+    this._cellMemberId     = memberId;
+    this._cellDate         = dateStr;
+    this._selectedDemandId = null;
+
+    const member = AppState.members.find(m => m.id === memberId);
+    const [y, mo, d] = dateStr.split('-');
+    const dayName = DAY_NAMES[new Date(dateStr + 'T12:00:00').getDay() - 1] || '';
+    const existing = AppState.tasks.filter(t => t.member_id === memberId && t.scheduled_date === dateStr);
+
+    // Busca demandas do banco para a aba "Do banco"
+    const { data: demands } = await db
+      .from('tasks_iss')
+      .select('id, title, demand_category')
+      .is('member_id', null)
+      .order('demand_category')
+      .order('updated_at', { ascending: false });
+    this._demands = demands || [];
+
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="CalendarCtrl._backdropClick(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col"
+             onclick="event.stopPropagation()">
+
+          <!-- Header -->
+          <div class="flex items-start justify-between p-5 border-b border-slate-700 shrink-0">
+            <div>
+              <h3 class="font-bold text-white">${member?.name}</h3>
+              <p class="text-slate-400 text-sm">${dayName}, ${d}/${mo}/${y}</p>
+            </div>
+            <button onclick="CalendarCtrl.closeCell()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="overflow-y-auto flex-1 p-5 flex flex-col gap-5">
+
+            <!-- Tarefas existentes -->
+            ${existing.length > 0 ? `
+              <div>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tarefas existentes</p>
+                <div class="flex flex-col gap-2">
+                  ${existing.map(t => `
+                    <div class="flex items-center justify-between bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2 gap-2">
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-1.5">
+                          ${t.demand_id ? '<i class="fa-solid fa-link text-slate-500 text-xs" title="Originada do banco"></i>' : ''}
+                          <p class="text-sm text-white truncate ${t.status === 'done' ? 'line-through opacity-50' : ''}">${t.title}</p>
+                        </div>
+                        <p class="text-xs text-slate-400">${TYPE_LABEL[t.type] || ''} · ${t.priority === 'principal' ? 'Principal' : 'Secundária'}</p>
+                      </div>
+                      <button onclick="CalendarCtrl.deleteTask('${t.id}')"
+                        class="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-danger hover:bg-slate-600 transition-colors">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                      </button>
+                    </div>`).join('')}
+                </div>
+              </div>` : ''}
+
+            <!-- Tabs nova tarefa -->
+            <div>
+              <div class="flex bg-slate-700/50 border border-slate-600 rounded-lg p-0.5 mb-4">
+                <button id="tab-btn-free" onclick="CalendarCtrl.setTab('free')"
+                  class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors bg-slate-600 text-white">
+                  Tarefa livre
+                </button>
+                <button id="tab-btn-bank" onclick="CalendarCtrl.setTab('bank')"
+                  class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors text-slate-400 hover:text-white">
+                  Do banco
+                </button>
+              </div>
+
+              <!-- Aba: Tarefa livre -->
+              <div id="tab-content-free">
+                <form onsubmit="CalendarCtrl.addTask(event)" class="flex flex-col gap-3">
+                  <input id="cal-title" type="text" required placeholder="Título da tarefa"
+                    class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
+                           text-sm focus:outline-none focus:border-primary transition-colors">
+                  ${this._taskFormFields()}
+                  <button type="submit"
+                    class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1">
+                    <i class="fa-solid fa-plus mr-1.5"></i>Adicionar tarefa
+                  </button>
+                </form>
+              </div>
+
+              <!-- Aba: Do banco -->
+              <div id="tab-content-bank" class="hidden flex flex-col gap-3">
+                ${this._demandListHTML()}
+                <div id="bank-assign-form" class="hidden flex flex-col gap-3">
+                  <div class="flex items-center gap-2 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2">
+                    <i class="fa-solid fa-link text-slate-400 text-xs"></i>
+                    <span class="text-xs text-slate-400">Atribuindo:</span>
+                    <span id="bank-selected-title" class="text-sm text-white font-medium truncate"></span>
+                  </div>
+                  <form onsubmit="CalendarCtrl.addTaskFromBank(event)" class="flex flex-col gap-3">
+                    ${this._taskFormFields('bank')}
+                    <button type="submit"
+                      class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                      <i class="fa-solid fa-link mr-1.5"></i>Atribuir demanda
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    setTimeout(() => document.getElementById('cal-title')?.focus(), 50);
+  },
+
+  _taskFormFields(prefix = '') {
+    const pid = prefix ? `${prefix}-` : '';
+    return `
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Prioridade</label>
+          <select id="${pid}cal-priority"
+            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm
+                   focus:outline-none focus:border-primary transition-colors">
+            <option value="principal">Principal</option>
+            <option value="secundaria">Secundária</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Turno</label>
+          <select id="${pid}cal-shift"
+            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm
+                   focus:outline-none focus:border-primary transition-colors">
+            <option value="manha">Manhã</option>
+            <option value="tarde">Tarde</option>
+            <option value="livre">Livre</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Tipo de demanda</label>
+        <select id="${pid}cal-type" onchange="CalendarCtrl.onTypeChange('${pid}')"
+          class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                 focus:outline-none focus:border-primary transition-colors">
+          ${TYPE_OPTS.map(o => `<option value="${o.v}">${o.l}</option>`).join('')}
+        </select>
+      </div>
+      <div id="${pid}cal-time-wrap" class="hidden">
+        <label class="block text-xs text-slate-400 mb-1">Horário <span class="text-danger">*</span></label>
+        <input id="${pid}cal-time" type="time"
+          class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                 focus:outline-none focus:border-primary transition-colors">
+      </div>`;
+  },
+
+  _demandListHTML() {
+    const { _demands } = this;
+    if (_demands.length === 0) {
+      return `<p class="text-slate-500 text-sm text-center py-4">Nenhuma demanda cadastrada no banco.</p>`;
+    }
+    const reprimidas = _demands.filter(d => d.demand_category === 'reprimida');
+    const estudos    = _demands.filter(d => d.demand_category === 'estudo');
+
+    const section = (label, icon, color, items) => items.length === 0 ? '' : `
+      <div class="mb-2">
+        <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1.5">
+          <i class="fa-solid ${icon} ${color}"></i>${label}
+        </p>
+        <div class="flex flex-col gap-1">
+          ${items.map(d => `
+            <button type="button" data-demand-id="${d.id}" onclick="CalendarCtrl.selectDemand('${d.id}')"
+              class="text-left px-3 py-2 rounded-lg text-sm transition-colors border
+                     text-slate-300 border-slate-600 hover:border-primary hover:text-white hover:bg-slate-700/50">
+              ${d.title}
+            </button>`).join('')}
+        </div>
+      </div>`;
+
+    return `
+      <div class="max-h-48 overflow-y-auto pr-1">
+        ${section('Demandas Reprimidas', 'fa-triangle-exclamation', 'text-rose-400', reprimidas)}
+        ${section('Temas de Estudo', 'fa-book-open', 'text-blue-400', estudos)}
+      </div>`;
+  },
+
+  setTab(tab) {
+    const isFree = tab === 'free';
+    document.getElementById('tab-btn-free').className =
+      `flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${isFree ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`;
+    document.getElementById('tab-btn-bank').className =
+      `flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${!isFree ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`;
+    document.getElementById('tab-content-free').classList.toggle('hidden', !isFree);
+    document.getElementById('tab-content-bank').classList.toggle('hidden', isFree);
+  },
+
+  selectDemand(id) {
+    this._selectedDemandId = id;
+    const demand = this._demands.find(d => d.id === id);
+
+    // Atualiza estilo dos botões
+    document.querySelectorAll('[data-demand-id]').forEach(btn => {
+      const sel = btn.dataset.demandId === id;
+      btn.classList.toggle('border-primary', sel);
+      btn.classList.toggle('bg-primary/20', sel);
+      btn.classList.toggle('text-white', sel);
+      btn.classList.toggle('border-slate-600', !sel);
+      btn.classList.toggle('bg-slate-700/50', !sel && btn.matches(':hover'));
+    });
+
+    // Mostra o formulário de atribuição
+    const form = document.getElementById('bank-assign-form');
+    form.classList.remove('hidden');
+    document.getElementById('bank-selected-title').textContent = demand?.title || '';
+  },
+
+  onTypeChange(prefix = '') {
+    const type  = document.getElementById(`${prefix}cal-type`)?.value;
+    const wrap  = document.getElementById(`${prefix}cal-time-wrap`);
+    const input = document.getElementById(`${prefix}cal-time`);
+    const needs = type === 'treinamento' || type === 'reuniao';
+    wrap.classList.toggle('hidden', !needs);
+    if (input) input.required = needs;
+  },
+
+  closeCell() {
+    document.getElementById('modal-container').innerHTML = '';
+    this._cellMemberId     = null;
+    this._cellDate         = null;
+    this._selectedDemandId = null;
+    this._demands          = [];
+  },
+
+  _backdropClick(e) {
+    if (e.target === e.currentTarget) this.closeCell();
+  },
+
+  _getFormValues(prefix = '') {
+    const pid = prefix ? `${prefix}-` : '';
+    const type     = document.getElementById(`${pid}cal-type`)?.value;
+    const timeWrap = document.getElementById(`${pid}cal-time-wrap`);
+    const time     = !timeWrap?.classList.contains('hidden')
+      ? document.getElementById(`${pid}cal-time`)?.value
+      : null;
+    return {
+      priority: document.getElementById(`${pid}cal-priority`)?.value,
+      shift:    document.getElementById(`${pid}cal-shift`)?.value,
+      type,
+      time,
+    };
+  },
+
+  async addTask(e) {
+    e.preventDefault();
+    const title = document.getElementById('cal-title').value.trim();
+    const { priority, shift, type, time } = this._getFormValues();
+    if ((type === 'treinamento' || type === 'reuniao') && !time) {
+      window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
+    }
+    await this._saveTask({ title, priority, shift, type, time, demandId: null });
+  },
+
+  async addTaskFromBank(e) {
+    e.preventDefault();
+    if (!this._selectedDemandId) {
+      window.Toast.show('Selecione uma demanda do banco.', 'warning'); return;
+    }
+    const demand = this._demands.find(d => d.id === this._selectedDemandId);
+    const { priority, shift, type, time } = this._getFormValues('bank');
+    if ((type === 'treinamento' || type === 'reuniao') && !time) {
+      window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
+    }
+    await this._saveTask({ title: demand.title, priority, shift, type, time, demandId: this._selectedDemandId });
+  },
+
+  async _saveTask({ title, priority, shift, type, time, demandId }) {
+    const row = {
+      id:             window.App.generateId(),
+      title,
+      member_id:      this._cellMemberId,
+      scheduled_date: this._cellDate,
+      priority,
+      shift,
+      type,
+      event_time:     time || null,
+      demand_id:      demandId || null,
+      status:         'pending',
+    };
+    const { error } = await db.from('tasks_iss').insert(row);
+    if (error) { window.Toast.show('Erro ao salvar tarefa.', 'error'); return; }
+
+    const { data } = await db.from('tasks_iss')
+      .select('*, members(name, role)')
+      .not('member_id', 'is', null)
+      .order('scheduled_date');
+    setAppState({ tasks: data || [] });
+
+    this.closeCell();
+    this._render();
+    window.Toast.show('Tarefa adicionada.', 'success');
+  },
+
+  async deleteTask(taskId) {
+    const { error } = await db.from('tasks_iss').delete().eq('id', taskId);
+    if (error) { window.Toast.show('Erro ao excluir.', 'error'); return; }
+    setAppState({ tasks: AppState.tasks.filter(t => t.id !== taskId) });
+    this.closeCell();
+    this._render();
+    window.Toast.show('Tarefa removida.', 'info');
+  },
+};
+window.CalendarCtrl = CalendarCtrl;
