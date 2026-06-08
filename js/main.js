@@ -13,5 +13,6 @@ import './controllers/admin/team.js';
 import './controllers/admin/calendar.js';
 import './controllers/admin/history.js';
 import './controllers/admin/bank.js';
+import './controllers/admin/backup.js';
 
 window.onload = () => App.init();

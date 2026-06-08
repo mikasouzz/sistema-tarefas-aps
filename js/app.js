@@ -68,6 +68,7 @@ export const App = {
       if (tab === 'team')     window.TeamCtrl.init(content);
       if (tab === 'history')  window.HistoryCtrl.init(content);
       if (tab === 'bank')     window.BankCtrl.init(content);
+      if (tab === 'backup')   window.BackupCtrl.init(content);
     }
   },
 
@@ -119,6 +120,7 @@ export const App = {
             ${btn('team',     'fa-users',                'Equipe')}
             ${btn('history',  'fa-clock-rotate-left',    'Histórico')}
             ${btn('bank',     'fa-database',             'Banco & Estudos')}
+            ${btn('backup',   'fa-box-archive',          'Backup')}
             <div class="w-px h-5 bg-slate-600 mx-2"></div>
             <button onclick="AuthCtrl.logout()"
               class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-danger hover:bg-slate-700 transition-colors">
