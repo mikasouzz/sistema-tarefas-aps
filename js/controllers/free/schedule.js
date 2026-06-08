@@ -3,9 +3,9 @@ import { AppState, setAppState } from '../../state.js';
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
 const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião' };
 const SHIFT_BADGE = {
-  manha: '<span class="text-amber-400 font-bold text-xs" title="Manhã">M</span>',
-  tarde: '<span class="text-indigo-400 font-bold text-xs" title="Tarde">T</span>',
-  livre: '<span class="text-teal-400  font-bold text-xs" title="Livre">L</span>',
+  manha: '<i class="fa-solid fa-sun text-amber-400" title="Manhã"></i>',
+  tarde: '<i class="fa-solid fa-cloud-sun text-orange-400" title="Tarde"></i>',
+  livre: '<i class="fa-solid fa-infinity text-teal-400" title="Livre"></i>',
 };
 
 function getMondayOf(date) {
