@@ -3,10 +3,28 @@ import { AppState, setAppState } from '../../state.js';
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
 const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião' };
 const SHIFT_BADGE = {
-  manha: '<span class="text-amber-400 font-bold text-xs">M</span>',
-  tarde: '<span class="text-indigo-400 font-bold text-xs">T</span>',
-  livre: '<span class="text-teal-400  font-bold text-xs">L</span>',
+  manha: '<span class="text-amber-400 font-bold text-xs" title="Manhã">M</span>',
+  tarde: '<span class="text-indigo-400 font-bold text-xs" title="Tarde">T</span>',
+  livre: '<span class="text-teal-400  font-bold text-xs" title="Livre">L</span>',
 };
+
+function getMondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function toDateStr(d) { return d.toISOString().split('T')[0]; }
+function fmtShort(d)  { return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); }
+function weekInputVal(monday) {
+  const d = new Date(monday);
+  const jan4 = new Date(d.getFullYear(), 0, 4);
+  const startOfWeek = new Date(jan4);
+  startOfWeek.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+  const weekNum = Math.ceil(((d - startOfWeek) / 86400000 + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
 
 function getWeekDays(monday) {
   return Array.from({ length: 5 }, (_, i) => {
@@ -15,15 +33,11 @@ function getWeekDays(monday) {
     return d;
   });
 }
-function toDateStr(d) {
-  return d.toISOString().split('T')[0];
-}
-function fmtShort(d) {
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-}
 
 export const ScheduleCtrl = {
   _container: null,
+  _weekStart: getMondayOf(new Date()),
+  _refreshing: false,
 
   init(container) {
     this._container = container;
@@ -31,58 +45,92 @@ export const ScheduleCtrl = {
   },
 
   _render() {
-    const { members, tasks, selectedMemberId, selectedWeekStart } = AppState;
-    const active  = members.filter(m => m.active);
-    const selId   = selectedMemberId;
-    const weekDays = getWeekDays(selectedWeekStart);
+    const { members, tasks } = AppState;
+    const active    = members.filter(m => m.active);
+    const weekDays  = getWeekDays(this._weekStart);
+    const weekStart = toDateStr(weekDays[0]);
+    const weekEnd   = toDateStr(weekDays[4]);
+    const { selectedMemberId } = AppState;
 
     this._container.innerHTML = `
-      <div class="flex gap-4 h-[calc(100vh-130px)]">
+      <div class="flex gap-4 flex-col h-[calc(100vh-130px)]">
 
-        <!-- Member list -->
-        <div class="w-44 shrink-0 bg-slate-800 border border-slate-700 rounded-xl overflow-y-auto">
-          <div class="p-3 border-b border-slate-700">
-            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Equipe</p>
+        <!-- Week nav bar (mesmo padrão do calendário admin) -->
+        <div class="flex items-center justify-between gap-3 flex-wrap shrink-0">
+          <div class="flex items-center gap-2">
+            <button onclick="ScheduleCtrl.shiftWeek(-1)"
+              class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">
+              <i class="fa-solid fa-chevron-left text-xs"></i>
+            </button>
+            <input type="week" value="${weekInputVal(this._weekStart)}"
+              onchange="ScheduleCtrl.setWeek(this.value)"
+              class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white
+                     focus:outline-none focus:border-primary transition-colors">
+            <button onclick="ScheduleCtrl.shiftWeek(1)"
+              class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">
+              <i class="fa-solid fa-chevron-right text-xs"></i>
+            </button>
+            <button onclick="ScheduleCtrl.goToday()"
+              class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm transition-colors">
+              Hoje
+            </button>
           </div>
-          <div class="p-2 flex flex-col gap-1">
-            ${active.length === 0
-              ? '<p class="text-slate-500 text-sm p-2">Sem membros.</p>'
-              : active.map(m => `
-                <button onclick="ScheduleCtrl.selectMember('${m.id}')"
-                  class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors
-                         ${selId === m.id ? 'bg-primary text-white' : 'text-slate-300 hover:bg-slate-700'}">
-                  ${m.name}
-                </button>`).join('')}
-          </div>
+
+          <button onclick="ScheduleCtrl.refresh()" id="schedule-refresh-btn"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white text-sm transition-colors">
+            <i class="fa-solid fa-rotate-right text-xs ${this._refreshing ? 'fa-spin' : ''}"></i>
+            Atualizar
+          </button>
         </div>
 
-        <!-- Schedule area -->
-        <div class="flex-1 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col">
-          ${selId ? this._scheduleHTML(selId, weekDays, tasks) : `
-            <div class="flex-1 flex items-center justify-center text-slate-500">
-              <div class="text-center">
-                <i class="fa-solid fa-hand-pointer text-4xl mb-3 block opacity-30"></i>
-                <p>Selecione um membro para ver o cronograma.</p>
-              </div>
-            </div>`}
-        </div>
+        <!-- Main split view -->
+        <div class="flex gap-4 flex-1 min-h-0">
 
+          <!-- Member list -->
+          <div class="w-44 shrink-0 bg-slate-800 border border-slate-700 rounded-xl overflow-y-auto">
+            <div class="p-3 border-b border-slate-700">
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Equipe</p>
+            </div>
+            <div class="p-2 flex flex-col gap-1">
+              ${active.length === 0
+                ? '<p class="text-slate-500 text-sm p-2">Sem membros.</p>'
+                : active.map(m => `
+                    <button onclick="ScheduleCtrl.selectMember('${m.id}')"
+                      class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors
+                             ${selectedMemberId === m.id ? 'bg-primary text-white' : 'text-slate-300 hover:bg-slate-700'}">
+                      ${m.name}
+                    </button>`).join('')}
+            </div>
+          </div>
+
+          <!-- Schedule panel -->
+          <div class="flex-1 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col min-w-0">
+            ${selectedMemberId
+              ? this._scheduleHTML(selectedMemberId, weekDays, tasks, weekStart, weekEnd)
+              : `<div class="flex-1 flex items-center justify-center text-slate-500">
+                  <div class="text-center">
+                    <i class="fa-solid fa-hand-pointer text-4xl mb-3 block opacity-30"></i>
+                    <p>Selecione um membro para ver o cronograma.</p>
+                  </div>
+                </div>`}
+          </div>
+
+        </div>
       </div>`;
   },
 
-  _scheduleHTML(memberId, weekDays, tasks) {
+  _scheduleHTML(memberId, weekDays, tasks, weekStart, weekEnd) {
     const member = AppState.members.find(m => m.id === memberId);
-    const weekStart = toDateStr(weekDays[0]);
-    const weekEnd   = toDateStr(weekDays[4]);
-
     const memberTasks = tasks.filter(t =>
       t.member_id === memberId &&
       t.scheduled_date >= weekStart &&
       t.scheduled_date <= weekEnd
     );
+    const todayStr = toDateStr(new Date());
 
     const cols = weekDays.map((day, i) => {
-      const dateStr = toDateStr(day);
+      const dateStr  = toDateStr(day);
+      const isToday  = dateStr === todayStr;
       const dayTasks = memberTasks
         .filter(t => t.scheduled_date === dateStr)
         .sort((a, b) => a.priority === 'principal' ? -1 : 1);
@@ -90,8 +138,8 @@ export const ScheduleCtrl = {
       return `
         <div class="flex flex-col gap-2 min-w-0">
           <div class="text-center pb-2 border-b border-slate-700">
-            <p class="text-xs font-semibold text-slate-400">${DAY_NAMES[i]}</p>
-            <p class="text-sm font-medium text-white mt-0.5">${fmtShort(day)}</p>
+            <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
+            <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtShort(day)}</p>
           </div>
           ${dayTasks.length === 0
             ? '<p class="text-slate-600 text-xs text-center py-2">—</p>'
@@ -100,21 +148,24 @@ export const ScheduleCtrl = {
     }).join('');
 
     return `
-      <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+      <div class="p-4 border-b border-slate-700 shrink-0 flex items-center justify-between">
         <div>
           <p class="font-semibold text-white">${member?.name || ''}</p>
-          <p class="text-slate-400 text-xs mt-0.5">Semana ${fmtShort(weekDays[0])} — ${fmtShort(weekDays[4])}</p>
+          <p class="text-slate-400 text-xs mt-0.5">
+            ${fmtShort(weekDays[0])} — ${fmtShort(weekDays[4])} ·
+            ${memberTasks.length} tarefa${memberTasks.length !== 1 ? 's' : ''}
+          </p>
         </div>
       </div>
       <div class="flex-1 overflow-auto p-4">
-        <div class="grid gap-4" style="grid-template-columns: repeat(5,1fr); min-width:600px">
+        <div class="grid gap-4" style="grid-template-columns:repeat(5,1fr);min-width:500px">
           ${cols}
         </div>
       </div>`;
   },
 
   _miniCard(t) {
-    const done   = t.status === 'done';
+    const done    = t.status === 'done';
     const hasTime = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
     return `
       <div class="bg-slate-700/60 border border-slate-600 rounded-lg p-2 text-xs ${done ? 'opacity-50' : ''}">
@@ -134,6 +185,39 @@ export const ScheduleCtrl = {
   selectMember(id) {
     setAppState({ selectedMemberId: id });
     this._render();
+  },
+
+  shiftWeek(delta) {
+    const d = new Date(this._weekStart);
+    d.setDate(d.getDate() + delta * 7);
+    this._weekStart = d;
+    this._render();
+  },
+
+  goToday() {
+    this._weekStart = getMondayOf(new Date());
+    this._render();
+  },
+
+  setWeek(val) {
+    const [year, week] = val.split('-W').map(Number);
+    const jan4 = new Date(year, 0, 4);
+    const mon  = new Date(jan4);
+    mon.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1 + (week - 1) * 7);
+    mon.setHours(0, 0, 0, 0);
+    this._weekStart = mon;
+    this._render();
+  },
+
+  async refresh() {
+    if (this._refreshing) return;
+    this._refreshing = true;
+    const btn = document.getElementById('schedule-refresh-btn');
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-rotate-right fa-spin text-xs"></i> Atualizando…';
+    await window.App.loadData();
+    this._refreshing = false;
+    this._render();
+    window.Toast.show('Dados atualizados.', 'success');
   },
 
   showTime(time, label) {
