@@ -123,14 +123,12 @@ export const HistoryCtrl = {
               <th class="text-left px-4 py-3 font-medium">Tarefa</th>
               <th class="text-left px-4 py-3 font-medium hidden sm:table-cell">Tipo</th>
               <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Turno</th>
-              <th class="text-left px-4 py-3 font-medium">Status</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-700/60">
             ${items.map(t => {
               const [y, mo, d] = (t.scheduled_date || '').split('-');
               const dateDisplay = t.scheduled_date ? `${d}/${mo}/${y}` : '—';
-              const done = t.status === 'done';
               return `
                 <tr class="hover:bg-slate-700/30 transition-colors">
                   <td class="px-4 py-3 text-slate-300 whitespace-nowrap">${dateDisplay}</td>
@@ -138,12 +136,6 @@ export const HistoryCtrl = {
                   <td class="px-4 py-3 text-slate-300">${t.title}</td>
                   <td class="px-4 py-3 text-slate-400 hidden sm:table-cell">${TYPE_LABEL[t.type] || t.type}</td>
                   <td class="px-4 py-3 text-slate-400 hidden md:table-cell">${SHIFT_LABEL[t.shift] || t.shift}</td>
-                  <td class="px-4 py-3">
-                    <span class="text-xs px-2 py-0.5 rounded-full border
-                      ${done ? 'bg-emerald-900/40 border-emerald-700 text-emerald-300' : 'bg-slate-700/60 border-slate-600 text-slate-400'}">
-                      ${done ? 'Concluída' : 'Pendente'}
-                    </span>
-                  </td>
                 </tr>`;
             }).join('')}
           </tbody>
@@ -157,7 +149,7 @@ export const HistoryCtrl = {
       return;
     }
     const BOM  = '﻿';
-    const head = ['Data', 'Funcionário', 'Título', 'Prioridade', 'Tipo', 'Turno', 'Horário', 'Status'];
+    const head = ['Data', 'Funcionário', 'Título', 'Prioridade', 'Tipo', 'Turno', 'Horário'];
     const rows = this._results.map(t => {
       const [y, mo, d] = (t.scheduled_date || '').split('-');
       return [
@@ -168,7 +160,6 @@ export const HistoryCtrl = {
         TYPE_LABEL[t.type]  || t.type  || '',
         SHIFT_LABEL[t.shift]|| t.shift || '',
         t.event_time || '',
-        t.status === 'done' ? 'Concluída' : 'Pendente',
       ];
     });
 
