@@ -165,13 +165,19 @@ export const ScheduleCtrl = {
   },
 
   _miniCard(t) {
-    const done    = t.status === 'done';
-    const hasTime = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
+    const done       = t.status === 'done';
+    const hasTime    = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
+    const isPrincipal = t.priority === 'principal';
     return `
-      <div class="bg-slate-700/60 border border-slate-600 rounded-lg p-2 text-xs ${done ? 'opacity-50' : ''}">
+      <div class="bg-slate-700/60 border border-slate-600 rounded-lg p-2 text-xs ${done ? 'opacity-50' : ''} ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-start justify-between gap-1">
           <span class="text-slate-200 leading-tight ${done ? 'line-through text-slate-500' : ''}">${t.title}</span>
           ${SHIFT_BADGE[t.shift] || ''}
+        </div>
+        <div class="mt-1">
+          <span class="inline-block px-1 py-px rounded font-medium ${isPrincipal ? 'bg-violet-900/60 text-violet-300' : 'bg-slate-600/60 text-slate-400'}">
+            ${isPrincipal ? 'Principal' : 'Secundária'}
+          </span>
         </div>
         ${hasTime ? `
           <button onclick="ScheduleCtrl.showTime('${t.event_time}','${TYPE_LABEL[t.type]}')"

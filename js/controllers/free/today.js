@@ -78,7 +78,7 @@ export const TodayCtrl = {
     const typeClass = TYPE_CLASS[t.type] || 'bg-slate-700 text-slate-300 border-slate-600';
     const hasTime  = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
     return `
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col gap-3 transition-opacity ${done ? 'opacity-50' : ''}">
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col gap-3 transition-opacity ${done ? 'opacity-50' : ''} ${t.priority === 'principal' ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-start justify-between gap-2">
           <h3 class="font-semibold leading-tight ${done ? 'line-through text-slate-400' : 'text-white'}">${t.title}</h3>
           <button onclick="TodayCtrl.toggleStatus('${t.id}','${t.status}')"
