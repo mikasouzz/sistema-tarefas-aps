@@ -88,7 +88,7 @@ export const App = {
               class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
               <i class="fa-solid fa-arrow-left text-sm"></i>
             </button>
-            <span class="font-semibold text-white">Tarefas <span class="text-slate-400 font-normal text-sm">ISS</span></span>
+            <span class="font-semibold text-white">Tarefas <span class="text-slate-400 font-normal text-sm">APS</span></span>
           </div>
           <div class="flex gap-1">
             ${btn('today',    'fa-calendar-day',  'Tarefas do Dia')}
@@ -112,7 +112,7 @@ export const App = {
       <div class="min-h-screen flex flex-col">
         <nav class="bg-slate-800 border-b border-slate-700 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-10">
           <div class="flex items-center gap-3">
-            <span class="font-semibold text-white">Tarefas <span class="text-slate-400 font-normal text-sm">ISS</span></span>
+            <span class="font-semibold text-white">Tarefas <span class="text-slate-400 font-normal text-sm">APS</span></span>
             <span class="bg-violet-700 text-violet-100 text-xs px-2 py-0.5 rounded-full font-medium">Supervisão</span>
           </div>
           <div class="flex items-center gap-1">

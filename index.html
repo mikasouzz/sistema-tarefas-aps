@@ -1,77 +1,110 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Tarefas — ISS</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de Tarefas — APS</title>
 
-  <!-- Tailwind Play CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#7c3aed',
-            accent:  '#10b981',
-            danger:  '#f43f5e',
-            warning: '#f59e0b',
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
+    <!-- Tailwind Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#7c3aed",
+              accent: "#10b981",
+              danger: "#f43f5e",
+              warning: "#f59e0b",
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+            },
           },
         },
-      },
-    };
-  </script>
+      };
+    </script>
 
-  <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
 
-  <!-- Inter font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- Supabase JS v2 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <style>
-    body { font-family: 'Inter', sans-serif; }
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
 
-    @keyframes slideInRight {
-      from { transform: translateX(110%); opacity: 0; }
-      to   { transform: translateX(0);    opacity: 1; }
-    }
-    @keyframes fadeOut {
-      from { opacity: 1; }
-      to   { opacity: 0; }
-    }
-    .toast-in  { animation: slideInRight 0.28s ease; }
-    .toast-out { animation: fadeOut 0.28s ease forwards; }
+      @keyframes slideInRight {
+        from {
+          transform: translateX(110%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+      .toast-in {
+        animation: slideInRight 0.28s ease;
+      }
+      .toast-out {
+        animation: fadeOut 0.28s ease forwards;
+      }
 
-    ::-webkit-scrollbar       { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: #1e293b; }
-    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+      ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 4px;
+      }
 
-    /* calendar grid */
-    .cal-grid {
-      display: grid;
-      grid-template-columns: 180px repeat(5, 1fr);
-      min-width: 760px;
-    }
-  </style>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+      /* calendar grid */
+      .cal-grid {
+        display: grid;
+        grid-template-columns: 180px repeat(5, 1fr);
+        min-width: 760px;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-900 text-slate-100 min-h-screen">
+    <!-- Toasts -->
+    <div
+      id="toast-container"
+      class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
+      style="min-width: 280px"
+    ></div>
 
-  <!-- Toasts -->
-  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none" style="min-width:280px"></div>
+    <!-- Modals -->
+    <div id="modal-container"></div>
 
-  <!-- Modals -->
-  <div id="modal-container"></div>
+    <!-- App root -->
+    <div id="app" class="min-h-screen"></div>
 
-  <!-- App root -->
-  <div id="app" class="min-h-screen"></div>
-
-  <script type="module" src="js/main.js"></script>
-</body>
+    <script type="module" src="js/main.js"></script>
+  </body>
 </html>

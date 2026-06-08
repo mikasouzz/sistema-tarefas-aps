@@ -9,7 +9,7 @@ export const HomeCtrl = {
             <i class="fa-solid fa-list-check text-2xl text-primary"></i>
           </div>
           <h1 class="text-3xl font-bold text-white tracking-tight">Sistema de Tarefas</h1>
-          <p class="text-slate-400 mt-1 text-lg font-light">ISS</p>
+          <p class="text-slate-400 mt-1 text-lg font-light">APS</p>
         </div>
 
         <!-- Access cards -->
@@ -47,7 +47,7 @@ export const HomeCtrl = {
 
         </div>
 
-        <p class="text-slate-600 text-xs">ISS — Acesso interno</p>
+        <p class="text-slate-600 text-xs">APS — Acesso interno</p>
       </div>
     `;
   },
