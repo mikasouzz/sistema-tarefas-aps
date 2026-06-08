@@ -123,6 +123,7 @@ export const HistoryCtrl = {
               <th class="text-left px-4 py-3 font-medium">Tarefa</th>
               <th class="text-left px-4 py-3 font-medium hidden sm:table-cell">Tipo</th>
               <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Turno</th>
+              <th class="text-left px-4 py-3 font-medium hidden lg:table-cell">Horário</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-700/60">
@@ -136,6 +137,7 @@ export const HistoryCtrl = {
                   <td class="px-4 py-3 text-slate-300">${t.title}</td>
                   <td class="px-4 py-3 text-slate-400 hidden sm:table-cell">${TYPE_LABEL[t.type] || t.type}</td>
                   <td class="px-4 py-3 text-slate-400 hidden md:table-cell">${SHIFT_LABEL[t.shift] || t.shift}</td>
+                  <td class="px-4 py-3 text-slate-400 hidden lg:table-cell">${t.event_time || '—'}</td>
                 </tr>`;
             }).join('')}
           </tbody>
