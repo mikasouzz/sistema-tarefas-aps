@@ -5,7 +5,7 @@ const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrateg
 const SHIFT_BADGE = {
   manha: '<i class="fa-solid fa-sun text-amber-400" title="Manhã"></i>',
   tarde: '<i class="fa-solid fa-cloud-sun text-orange-400" title="Tarde"></i>',
-  livre: '<i class="fa-solid fa-infinity text-teal-400" title="Livre"></i>',
+  livre: '<i class="fa-solid fa-clock text-teal-400" title="Livre"></i>',
 };
 
 function getMondayOf(date) {
@@ -126,7 +126,8 @@ export const ScheduleCtrl = {
       t.scheduled_date >= weekStart &&
       t.scheduled_date <= weekEnd
     );
-    const todayStr = toDateStr(new Date());
+    const _now     = new Date();
+    const todayStr = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
 
     const cols = weekDays.map((day, i) => {
       const dateStr  = toDateStr(day);

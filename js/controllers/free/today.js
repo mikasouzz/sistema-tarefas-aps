@@ -17,7 +17,7 @@ const TYPE_CLASS = {
 const SHIFT_HTML = {
   manha: '<i class="fa-solid fa-sun text-amber-400" title="Manhã"></i>',
   tarde: '<i class="fa-solid fa-cloud-sun text-orange-400" title="Tarde"></i>',
-  livre: '<i class="fa-solid fa-infinity text-teal-400" title="Livre"></i>',
+  livre: '<i class="fa-solid fa-clock text-teal-400" title="Livre"></i>',
 };
 
 export const TodayCtrl = {
@@ -30,7 +30,8 @@ export const TodayCtrl = {
       <div class="flex items-center gap-2 text-slate-500 py-12 justify-center">
         <i class="fa-solid fa-spinner fa-spin"></i> Carregando tarefas…
       </div>`;
-    const today = new Date().toISOString().split('T')[0];
+    const now   = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const { data, error } = await db
       .from('tasks_iss')
       .select('*, members(name)')
