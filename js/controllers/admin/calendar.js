@@ -99,7 +99,9 @@ export const CalendarCtrl = {
           </div>
 
           ${weekDays.map((d, i) => {
-            const isToday = toDateStr(d) === toDateStr(new Date());
+            const _n = new Date();
+            const _today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`;
+            const isToday = toDateStr(d) === _today;
             return `
               <div class="px-3 py-3 border-b border-l border-slate-700 text-center">
                 <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
