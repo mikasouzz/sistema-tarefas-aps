@@ -61,14 +61,36 @@ export const TodayCtrl = {
 
     const groups = this._groupByMember();
 
+    const totalAll = this.tasks.length;
+    const doneAll  = this.tasks.filter(t => t.status === 'done').length;
+    const pct      = Math.round((doneAll / totalAll) * 100);
+    const allDone  = doneAll === totalAll;
+
     c.innerHTML = `
-      <div class="mb-6">
+      <div class="mb-5">
         <h2 class="text-xl font-semibold text-white capitalize">${today}</h2>
         <p class="text-slate-400 text-sm mt-1">
           ${groups.length} membro${groups.length !== 1 ? 's' : ''} ·
-          ${this.tasks.length} tarefa${this.tasks.length !== 1 ? 's' : ''} agendada${this.tasks.length !== 1 ? 's' : ''}
+          ${totalAll} tarefa${totalAll !== 1 ? 's' : ''} agendada${totalAll !== 1 ? 's' : ''}
         </p>
       </div>
+
+      <div class="mb-6 bg-slate-800 border border-slate-700 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-semibold text-white">Meta coletiva do dia</span>
+          <span class="text-sm ${allDone ? 'text-accent font-medium' : 'text-slate-400'}">${doneAll} de ${totalAll} concluídas</span>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-2.5">
+          <div class="h-2.5 rounded-full transition-all duration-500 ${allDone ? 'bg-accent' : 'bg-primary'}"
+               style="width: ${pct}%"></div>
+        </div>
+        <p class="text-xs mt-2 ${allDone ? 'text-accent font-medium' : 'text-slate-500'}">
+          ${allDone
+            ? '<i class="fa-solid fa-trophy mr-1"></i>Todas as tarefas do dia foram concluídas!'
+            : `${pct}% concluído`}
+        </p>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         ${groups.map(g => this._memberPanel(g)).join('')}
       </div>`;

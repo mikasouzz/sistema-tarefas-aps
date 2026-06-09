@@ -7,6 +7,7 @@ import './controllers/home.js';
 import './controllers/free/today.js';
 import './controllers/free/schedule.js';
 import './controllers/free/demands.js';
+import './controllers/free/ranking.js';
 
 // Admin view controllers
 import './controllers/admin/team.js';

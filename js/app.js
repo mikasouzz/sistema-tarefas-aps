@@ -62,6 +62,7 @@ export const App = {
       if (tab === 'today')    window.TodayCtrl.init(content);
       if (tab === 'schedule') window.ScheduleCtrl.init(content);
       if (tab === 'demands')  window.FreeDemandsCtrl.init(content);
+      if (tab === 'ranking')  window.RankingCtrl.init(content);
     }
     if (view === 'admin') {
       if (tab === 'calendar') window.CalendarCtrl.init(content);
@@ -91,9 +92,10 @@ export const App = {
             <span class="font-semibold text-white">Tarefas <span class="text-slate-400 font-normal text-sm">APS</span></span>
           </div>
           <div class="flex gap-1">
-            ${btn('today',    'fa-calendar-day',  'Tarefas do Dia')}
-            ${btn('schedule', 'fa-calendar-week', 'Cronograma')}
-            ${btn('demands',  'fa-layer-group',   'Banco de Demandas')}
+            ${btn('today',    'fa-calendar-day',   'Tarefas do Dia')}
+            ${btn('schedule', 'fa-calendar-week',  'Cronograma')}
+            ${btn('demands',  'fa-layer-group',    'Banco de Demandas')}
+            ${btn('ranking',  'fa-ranking-star',   'Ranking')}
           </div>
         </nav>
         <main id="content" class="flex-1 p-4 sm:p-6"></main>
