@@ -98,7 +98,7 @@ export const App = {
             ${btn('today',    'fa-calendar-day',   'Tarefas do Dia')}
             ${btn('schedule', 'fa-calendar-week',  'Cronograma')}
             ${btn('demands',  'fa-layer-group',    'Banco de Demandas')}
-            ${btn('ranking',  'fa-ranking-star',   'Ranking')}
+            ${btn('ranking',  'fa-chart-line',     'Visão Geral')}
           </div>
         </nav>
         <main id="content" class="flex-1 p-4 sm:p-6"></main>
