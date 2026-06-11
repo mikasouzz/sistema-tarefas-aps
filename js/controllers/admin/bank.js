@@ -70,6 +70,18 @@ export const BankCtrl = {
           </div>
         </div>
 
+        <form onsubmit="BankCtrl.addItem(event,'${category}')"
+          class="px-4 py-3 border-b border-slate-700 flex gap-2">
+          <input type="text" placeholder="${placeholder}" required
+            id="bank-input-${category}"
+            class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                   placeholder-slate-500 focus:outline-none focus:border-primary transition-colors">
+          <button type="submit"
+            class="px-3 py-2 bg-primary hover:bg-violet-600 text-white rounded-lg transition-colors text-sm font-medium">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </form>
+
         <ul class="divide-y divide-slate-700/50 flex-1">
           ${items.length === 0
             ? `<li class="px-5 py-6 text-slate-500 text-sm text-center">Nenhum item cadastrado.</li>`
@@ -96,18 +108,6 @@ export const BankCtrl = {
                   </li>`;
               }).join('')}
         </ul>
-
-        <form onsubmit="BankCtrl.addItem(event,'${category}')"
-          class="px-4 py-3 border-t border-slate-700 flex gap-2">
-          <input type="text" placeholder="${placeholder}" required
-            id="bank-input-${category}"
-            class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
-                   placeholder-slate-500 focus:outline-none focus:border-primary transition-colors">
-          <button type="submit"
-            class="px-3 py-2 bg-primary hover:bg-violet-600 text-white rounded-lg transition-colors text-sm font-medium">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-        </form>
       </div>`;
   },
 
