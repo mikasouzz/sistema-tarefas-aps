@@ -7,18 +7,20 @@ export const App = {
   },
 
   async loadData() {
-    const [mRes, tRes] = await Promise.all([
+    const [mRes, tRes, nRes] = await Promise.all([
       db.from('members').select('*').order('name'),
       db.from('tasks_iss')
         .select('*, members(name, role)')
         .not('member_id', 'is', null)
         .order('scheduled_date'),
+      db.from('notices').select('*').order('created_at', { ascending: false }),
     ]);
     if (mRes.error) window.Toast?.show('Erro ao carregar membros.', 'error');
     if (tRes.error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
     setAppState({
-      members: mRes.data || [],
-      tasks:   tRes.data || [],
+      members: mRes.data  || [],
+      tasks:   tRes.data  || [],
+      notices: nRes.data  || [],
     });
   },
 
@@ -69,6 +71,7 @@ export const App = {
       if (tab === 'team')     window.TeamCtrl.init(content);
       if (tab === 'history')  window.HistoryCtrl.init(content);
       if (tab === 'bank')     window.BankCtrl.init(content);
+      if (tab === 'notices')  window.NoticesCtrl.init(content);
       if (tab === 'backup')   window.BackupCtrl.init(content);
     }
   },
@@ -122,6 +125,7 @@ export const App = {
             ${btn('team',     'fa-users',                'Equipe')}
             ${btn('history',  'fa-clock-rotate-left',    'Histórico')}
             ${btn('bank',     'fa-database',             'Banco & Estudos')}
+            ${btn('notices',  'fa-bell',                 'Avisos')}
             ${btn('backup',   'fa-box-archive',          'Backup')}
             <div class="w-px h-5 bg-slate-600 mx-2"></div>
             <button onclick="AuthCtrl.logout()"

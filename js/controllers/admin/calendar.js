@@ -1,5 +1,6 @@
 import { db } from '../../db.js';
 import { AppState, setAppState } from '../../state.js';
+import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../utils/date.js';
 
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
 const TYPE_OPTS  = [
@@ -18,26 +19,6 @@ const TYPE_DOT = {
 };
 const TYPE_LABEL = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
 
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-function toDateStr(d) { return d.toISOString().split('T')[0]; }
-function weekInputVal(monday) {
-  const d = new Date(monday);
-  const jan4 = new Date(d.getFullYear(), 0, 4);
-  const startOfWeek = new Date(jan4);
-  startOfWeek.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
-  const weekNum = Math.ceil(((d - startOfWeek) / 86400000 + 1) / 7);
-  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-}
-function fmtDay(d) {
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-}
 
 export const CalendarCtrl = {
   _container: null,
@@ -99,11 +80,11 @@ export const CalendarCtrl = {
           </div>
 
           ${weekDays.map((d, i) => {
-            const isToday = toDateStr(d) === toDateStr(new Date());
+            const isToday = toDateStr(d) === todayStr();
             return `
               <div class="px-3 py-3 border-b border-l border-slate-700 text-center">
                 <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
-                <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtDay(d)}</p>
+                <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtShort(d)}</p>
               </div>`;
           }).join('')}
 

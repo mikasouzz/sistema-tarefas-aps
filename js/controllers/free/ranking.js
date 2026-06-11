@@ -1,18 +1,5 @@
 import { AppState } from '../../state.js';
-
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-function toLocalDateStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function fmtShort(d) {
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-}
+import { getMondayOf, toDateStr, fmtShort } from '../../utils/date.js';
 
 const MEDALS = [
   '<i class="fa-solid fa-trophy text-amber-400 text-lg"></i>',
@@ -33,8 +20,8 @@ export const RankingCtrl = {
 
     const monday  = getMondayOf(new Date());
     const friday  = new Date(monday); friday.setDate(monday.getDate() + 4);
-    const weekStart = toLocalDateStr(monday);
-    const weekEnd   = toLocalDateStr(friday);
+    const weekStart = toDateStr(monday);
+    const weekEnd   = toDateStr(friday);
 
     const weekTasks = tasks.filter(t =>
       t.scheduled_date >= weekStart && t.scheduled_date <= weekEnd
