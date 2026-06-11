@@ -106,8 +106,9 @@ export const RankingCtrl = {
         ...g,
         pct:     Math.round((g.done / g.total) * 100),
         lastPct: g.lastTotal > 0 ? Math.round((g.lastDone / g.lastTotal) * 100) : null,
+        score:   g.done + (g.done * (g.done / g.total)),
       }))
-      .sort((a, b) => b.pct - a.pct || b.done - a.done || a.name.localeCompare(b.name));
+      .sort((a, b) => b.score - a.score || b.done - a.done || a.name.localeCompare(b.name));
 
     this._container.innerHTML = `
       <!-- Cabeçalho -->
@@ -249,9 +250,8 @@ export const RankingCtrl = {
         <div class="w-8 text-center shrink-0">
           ${isTop3 ? MEDALS[i] : `<span class="text-slate-500 font-bold text-sm">${i + 1}º</span>`}
         </div>
-        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0
-                    ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
-          ${allDone ? '<i class="fa-solid fa-check text-xs"></i>' : initial}
+        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 bg-primary/20 border border-primary/40 text-primary">
+          ${initial}
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between mb-1.5">
