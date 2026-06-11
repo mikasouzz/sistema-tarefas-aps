@@ -4,9 +4,9 @@ import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
 const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião' };
 const SHIFT_BADGE = {
-  manha: '<i class="fa-solid fa-sun text-amber-400" title="Manhã"></i>',
-  tarde: '<i class="fa-solid fa-cloud-sun text-orange-400" title="Tarde"></i>',
-  livre: '<i class="fa-solid fa-clock text-teal-400" title="Livre"></i>',
+  manha: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
+  tarde: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-orange-400/20 text-orange-400"><i class="fa-solid fa-cloud-sun text-xs"></i>Tarde</span>',
+  livre: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-teal-400/20 text-teal-400"><i class="fa-solid fa-clock text-xs"></i>Livre</span>',
 };
 
 function getWeekDays(monday) {
@@ -114,9 +114,16 @@ export const ScheduleCtrl = {
     const cols = weekDays.map((day, i) => {
       const dateStr  = toDateStr(day);
       const isToday  = dateStr === today;
+      const SHIFT_ORDER = { manha: 0, tarde: 1, livre: 2 };
       const dayTasks = memberTasks
         .filter(t => t.scheduled_date === dateStr)
-        .sort((a, b) => a.priority === 'principal' ? -1 : 1);
+        .sort((a, b) => {
+          const shiftDiff = (SHIFT_ORDER[a.shift] ?? 99) - (SHIFT_ORDER[b.shift] ?? 99);
+          if (shiftDiff !== 0) return shiftDiff;
+          if (a.priority === 'principal' && b.priority !== 'principal') return -1;
+          if (a.priority !== 'principal' && b.priority === 'principal') return  1;
+          return 0;
+        });
 
       return `
         <div class="flex flex-col gap-2 min-w-0">

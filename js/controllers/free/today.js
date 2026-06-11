@@ -19,9 +19,9 @@ const TYPE_CLASS = {
   reuniao:     'bg-rose-900/50 text-rose-300 border-rose-700',
 };
 const SHIFT_HTML = {
-  manha: '<i class="fa-solid fa-sun text-amber-400" title="Manhã"></i>',
-  tarde: '<i class="fa-solid fa-cloud-sun text-orange-400" title="Tarde"></i>',
-  livre: '<i class="fa-solid fa-clock text-teal-400" title="Livre"></i>',
+  manha: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
+  tarde: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-orange-400/20 text-orange-400"><i class="fa-solid fa-cloud-sun text-xs"></i>Tarde</span>',
+  livre: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-teal-400/20 text-teal-400"><i class="fa-solid fa-clock text-xs"></i>Livre</span>',
 };
 
 export const TodayCtrl = {
@@ -147,8 +147,11 @@ export const TodayCtrl = {
       if (!map.has(key)) map.set(key, { name: t.members?.name || '—', tasks: [] });
       map.get(key).tasks.push(t);
     }
+    const SHIFT_ORDER = { manha: 0, tarde: 1, livre: 2 };
     for (const g of map.values()) {
       g.tasks.sort((a, b) => {
+        const shiftDiff = (SHIFT_ORDER[a.shift] ?? 99) - (SHIFT_ORDER[b.shift] ?? 99);
+        if (shiftDiff !== 0) return shiftDiff;
         if (a.priority === 'principal' && b.priority !== 'principal') return -1;
         if (a.priority !== 'principal' && b.priority === 'principal') return  1;
         return 0;
@@ -196,11 +199,11 @@ export const TodayCtrl = {
           </button>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          ${SHIFT_HTML[t.shift] || ''}
           <span class="text-xs px-2 py-0.5 rounded-full font-medium ${t.priority === 'principal' ? 'bg-violet-700 text-white' : 'bg-slate-600 text-slate-300'}">
             ${t.priority === 'principal' ? 'Principal' : 'Secundária'}
           </span>
           <span class="text-xs px-2 py-0.5 rounded border ${typeClass}">${TYPE_LABEL[t.type] || t.type}</span>
-          <span>${SHIFT_HTML[t.shift] || ''}</span>
           ${hasTime ? `
             <button onclick="TodayCtrl.showTime('${t.event_time}','${TYPE_LABEL[t.type]}')"
               class="text-warning hover:text-amber-300 transition-colors" title="Ver horário">
