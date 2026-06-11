@@ -1,4 +1,8 @@
 import { db } from '../../db.js';
+import { todayStr } from '../../utils/date.js';
+import { AppState } from '../../state.js';
+
+const PIN = '<i class="fa-solid fa-thumbtack text-amber-400 text-xs shrink-0 mt-0.5"></i>';
 
 const TYPE_LABEL = {
   operacional: 'Operacional',
@@ -30,8 +34,7 @@ export const TodayCtrl = {
       <div class="flex items-center gap-2 text-slate-500 py-12 justify-center">
         <i class="fa-solid fa-spinner fa-spin"></i> Carregando tarefas…
       </div>`;
-    const now   = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const today = todayStr();
     const { data, error } = await db
       .from('tasks_iss')
       .select('*, members(name)')
@@ -40,6 +43,34 @@ export const TodayCtrl = {
     if (error) { window.Toast.show('Erro ao carregar tarefas.', 'error'); return; }
     this.tasks = data || [];
     this._render();
+  },
+
+  _noticesPanel() {
+    const notices = [...AppState.notices].sort((a, b) =>
+      (b.pinned - a.pinned) || new Date(b.created_at) - new Date(a.created_at)
+    );
+    return `
+      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
+          <i class="fa-solid fa-bell text-amber-400 text-sm"></i>
+          <p class="text-sm font-semibold text-white">Avisos</p>
+        </div>
+        <div class="divide-y divide-slate-700/60">
+          ${notices.length === 0
+            ? `<div class="px-4 py-8 text-center text-slate-500 text-sm">
+                 <i class="fa-solid fa-bell-slash text-2xl mb-2 block opacity-30"></i>
+                 Nenhum aviso no momento.
+               </div>`
+            : notices.map(n => `
+                <div class="px-4 py-3">
+                  <div class="flex items-center gap-1.5 mb-1">
+                    ${n.pinned ? PIN : ''}
+                    <p class="text-sm font-semibold text-white leading-tight">${n.title}</p>
+                  </div>
+                  <p class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">${n.content}</p>
+                </div>`).join('')}
+        </div>
+      </div>`;
   },
 
   _render() {
@@ -51,26 +82,61 @@ export const TodayCtrl = {
 
     if (this.tasks.length === 0) {
       c.innerHTML = `
-        <div class="text-center py-20 text-slate-500">
-          <i class="fa-solid fa-calendar-check text-5xl mb-4 block opacity-40"></i>
-          <p class="text-lg">Nenhuma tarefa para hoje.</p>
-          <p class="text-sm mt-1 capitalize text-slate-600">${today}</p>
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+          <div class="text-center py-20 text-slate-500">
+            <i class="fa-solid fa-calendar-check text-5xl mb-4 block opacity-40"></i>
+            <p class="text-lg">Nenhuma tarefa para hoje.</p>
+            <p class="text-sm mt-1 capitalize text-slate-600">${today}</p>
+          </div>
+          ${this._noticesPanel()}
         </div>`;
       return;
     }
 
     const groups = this._groupByMember();
 
+    const totalAll = this.tasks.length;
+    const doneAll  = this.tasks.filter(t => t.status === 'done').length;
+    const pct      = Math.round((doneAll / totalAll) * 100);
+    const allDone  = doneAll === totalAll;
+
     c.innerHTML = `
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold text-white capitalize">${today}</h2>
-        <p class="text-slate-400 text-sm mt-1">
-          ${groups.length} membro${groups.length !== 1 ? 's' : ''} ·
-          ${this.tasks.length} tarefa${this.tasks.length !== 1 ? 's' : ''} agendada${this.tasks.length !== 1 ? 's' : ''}
-        </p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        ${groups.map(g => this._memberPanel(g)).join('')}
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+
+        <!-- Tarefas -->
+        <div>
+          <div class="mb-5">
+            <h2 class="text-xl font-semibold text-white capitalize">${today}</h2>
+            <p class="text-slate-400 text-sm mt-1">
+              ${groups.length} membro${groups.length !== 1 ? 's' : ''} ·
+              ${totalAll} tarefa${totalAll !== 1 ? 's' : ''} agendada${totalAll !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <div class="mb-6 bg-slate-800 border border-slate-700 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-semibold text-white">Meta coletiva do dia</span>
+              <span class="text-sm ${allDone ? 'text-accent font-medium' : 'text-slate-400'}">${doneAll} de ${totalAll} concluídas</span>
+            </div>
+            <div class="w-full bg-slate-700 rounded-full h-2.5">
+              <div class="h-2.5 rounded-full transition-all duration-500 ${allDone ? 'bg-accent' : 'bg-primary'}"
+                   style="width: ${pct}%"></div>
+            </div>
+            <p class="text-xs mt-2 ${allDone ? 'text-accent font-medium' : 'text-slate-500'}">
+              ${allDone
+                ? '<i class="fa-solid fa-trophy mr-1"></i>Todas as tarefas do dia foram concluídas!'
+                : `${pct}% concluído`}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            ${groups.map(g => this._memberPanel(g)).join('')}
+          </div>
+        </div>
+
+        <!-- Avisos -->
+        ${this._noticesPanel()}
+
       </div>`;
   },
 

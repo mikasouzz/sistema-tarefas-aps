@@ -1,5 +1,6 @@
 import { db } from '../../db.js';
 import { AppState } from '../../state.js';
+import { todayStr } from '../../utils/date.js';
 
 const TYPE_LABEL  = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião' };
 const SHIFT_LABEL = { manha:'Manhã', tarde:'Tarde', livre:'Livre' };
@@ -173,7 +174,7 @@ export const HistoryCtrl = {
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), {
       href:     url,
-      download: `historico-iss-${new Date().toISOString().split('T')[0]}.csv`,
+      download: `historico-iss-${todayStr()}.csv`,
     });
     a.click();
     URL.revokeObjectURL(url);

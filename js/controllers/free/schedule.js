@@ -1,4 +1,5 @@
 import { AppState, setAppState } from '../../state.js';
+import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../utils/date.js';
 
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
 const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião' };
@@ -7,24 +8,6 @@ const SHIFT_BADGE = {
   tarde: '<i class="fa-solid fa-cloud-sun text-orange-400" title="Tarde"></i>',
   livre: '<i class="fa-solid fa-clock text-teal-400" title="Livre"></i>',
 };
-
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-function toDateStr(d) { return d.toISOString().split('T')[0]; }
-function fmtShort(d)  { return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); }
-function weekInputVal(monday) {
-  const d = new Date(monday);
-  const jan4 = new Date(d.getFullYear(), 0, 4);
-  const startOfWeek = new Date(jan4);
-  startOfWeek.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
-  const weekNum = Math.ceil(((d - startOfWeek) / 86400000 + 1) / 7);
-  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-}
 
 function getWeekDays(monday) {
   return Array.from({ length: 5 }, (_, i) => {
@@ -126,12 +109,11 @@ export const ScheduleCtrl = {
       t.scheduled_date >= weekStart &&
       t.scheduled_date <= weekEnd
     );
-    const _now     = new Date();
-    const todayStr = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
+    const today = todayStr();
 
     const cols = weekDays.map((day, i) => {
       const dateStr  = toDateStr(day);
-      const isToday  = dateStr === todayStr;
+      const isToday  = dateStr === today;
       const dayTasks = memberTasks
         .filter(t => t.scheduled_date === dateStr)
         .sort((a, b) => a.priority === 'principal' ? -1 : 1);

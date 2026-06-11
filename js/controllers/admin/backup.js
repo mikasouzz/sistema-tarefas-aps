@@ -1,5 +1,6 @@
 import { db } from '../../db.js';
 import { setAppState } from '../../state.js';
+import { todayStr } from '../../utils/date.js';
 
 const BATCH = 50; // rows por upsert
 
@@ -102,7 +103,7 @@ export const BackupCtrl = {
       const url  = URL.createObjectURL(blob);
       Object.assign(document.createElement('a'), {
         href:     url,
-        download: `backup-iss-${new Date().toISOString().split('T')[0]}.json`,
+        download: `backup-iss-${todayStr()}.json`,
       }).click();
       URL.revokeObjectURL(url);
 

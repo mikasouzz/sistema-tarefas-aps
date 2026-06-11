@@ -1,11 +1,4 @@
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { getMondayOf } from './utils/date.js';
 
 export let AppState = {
   view: 'home',          // 'home' | 'free' | 'admin'
@@ -13,6 +6,7 @@ export let AppState = {
   adminTab: 'calendar',  // 'calendar' | 'team' | 'history' | 'bank'
   members: [],
   tasks: [],             // tarefas alocadas (member_id NOT NULL)
+  notices: [],
   isAdmin: false,
   selectedWeekStart: getMondayOf(new Date()),
   selectedMemberId: null,
