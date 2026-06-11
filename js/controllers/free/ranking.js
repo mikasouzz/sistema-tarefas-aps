@@ -107,7 +107,7 @@ export const RankingCtrl = {
         pct:     Math.round((g.done / g.total) * 100),
         lastPct: g.lastTotal > 0 ? Math.round((g.lastDone / g.lastTotal) * 100) : null,
       }))
-      .sort((a, b) => b.done - a.done || b.total - a.total || a.name.localeCompare(b.name));
+      .sort((a, b) => b.pct - a.pct || b.done - a.done || a.name.localeCompare(b.name));
 
     this._container.innerHTML = `
       <!-- Cabeçalho -->
