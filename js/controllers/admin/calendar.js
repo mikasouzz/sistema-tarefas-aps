@@ -19,7 +19,6 @@ const TYPE_DOT = {
 };
 const TYPE_LABEL = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
 
-
 export const CalendarCtrl = {
   _container: null,
   _cellMemberId: null,
@@ -140,17 +139,17 @@ export const CalendarCtrl = {
     this._render();
   },
 
+  // ── Modal ──────────────────────────────────────────────────────────────────
+
   async openCell(memberId, dateStr) {
     this._cellMemberId     = memberId;
     this._cellDate         = dateStr;
     this._selectedDemandId = null;
 
-    const member = AppState.members.find(m => m.id === memberId);
+    const member  = AppState.members.find(m => m.id === memberId);
     const [y, mo, d] = dateStr.split('-');
     const dayName = DAY_NAMES[new Date(dateStr + 'T12:00:00').getDay() - 1] || '';
-    const existing = AppState.tasks.filter(t => t.member_id === memberId && t.scheduled_date === dateStr);
 
-    // Busca demandas do banco para a aba "Do banco"
     const { data: demands } = await db
       .from('tasks_iss')
       .select('id, title, demand_category')
@@ -164,8 +163,6 @@ export const CalendarCtrl = {
            onclick="CalendarCtrl._backdropClick(event)">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col"
              onclick="event.stopPropagation()">
-
-          <!-- Header -->
           <div class="flex items-start justify-between p-5 border-b border-slate-700 shrink-0">
             <div>
               <h3 class="font-bold text-white">${member?.name}</h3>
@@ -176,87 +173,150 @@ export const CalendarCtrl = {
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
-
-          <div class="overflow-y-auto flex-1 p-5 flex flex-col gap-5">
-
-            <!-- Tarefas existentes -->
-            ${existing.length > 0 ? `
-              <div>
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tarefas existentes</p>
-                <div class="flex flex-col gap-2">
-                  ${existing.map(t => `
-                    <div class="flex items-center justify-between bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2 gap-2">
-                      <div class="min-w-0">
-                        <div class="flex items-center gap-1.5">
-                          ${t.demand_id ? '<i class="fa-solid fa-link text-slate-500 text-xs" title="Originada do banco"></i>' : ''}
-                          <p class="text-sm text-white truncate ${t.status === 'done' ? 'line-through opacity-50' : ''}">${t.title}</p>
-                        </div>
-                        <p class="text-xs text-slate-400">${TYPE_LABEL[t.type] || ''} · ${t.priority === 'principal' ? 'Principal' : 'Secundária'}</p>
-                      </div>
-                      <button onclick="CalendarCtrl.deleteTask('${t.id}')"
-                        class="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-danger hover:bg-slate-600 transition-colors">
-                        <i class="fa-solid fa-trash text-xs"></i>
-                      </button>
-                    </div>`).join('')}
-                </div>
-              </div>` : ''}
-
-            <!-- Tabs nova tarefa -->
-            <div>
-              <div class="flex bg-slate-700/50 border border-slate-600 rounded-lg p-0.5 mb-4">
-                <button id="tab-btn-free" onclick="CalendarCtrl.setTab('free')"
-                  class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors bg-slate-600 text-white">
-                  Tarefa livre
-                </button>
-                <button id="tab-btn-bank" onclick="CalendarCtrl.setTab('bank')"
-                  class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors text-slate-400 hover:text-white">
-                  Do banco
-                </button>
-              </div>
-
-              <!-- Aba: Tarefa livre -->
-              <div id="tab-content-free">
-                <form onsubmit="CalendarCtrl.addTask(event)" class="flex flex-col gap-3">
-                  <input id="cal-title" type="text" required placeholder="Título da tarefa"
-                    class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
-                           text-sm focus:outline-none focus:border-primary transition-colors">
-                  ${this._taskFormFields()}
-                  <button type="submit"
-                    class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1">
-                    <i class="fa-solid fa-plus mr-1.5"></i>Adicionar tarefa
-                  </button>
-                </form>
-              </div>
-
-              <!-- Aba: Do banco -->
-              <div id="tab-content-bank" class="hidden flex flex-col gap-3">
-                ${this._demandListHTML()}
-                <div id="bank-assign-form" class="hidden flex flex-col gap-3">
-                  <div class="flex items-center gap-2 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2">
-                    <i class="fa-solid fa-link text-slate-400 text-xs"></i>
-                    <span class="text-xs text-slate-400">Atribuindo:</span>
-                    <span id="bank-selected-title" class="text-sm text-white font-medium truncate"></span>
-                  </div>
-                  <form onsubmit="CalendarCtrl.addTaskFromBank(event)" class="flex flex-col gap-3">
-                    ${this._taskFormFields('bank')}
-                    <button type="submit"
-                      class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
-                      <i class="fa-solid fa-link mr-1.5"></i>Atribuir demanda
-                    </button>
-                  </form>
-                </div>
-              </div>
-
-            </div>
-          </div>
+          <div id="cal-modal-body" class="overflow-y-auto flex-1"></div>
         </div>
       </div>`;
 
-    setTimeout(() => document.getElementById('cal-title')?.focus(), 50);
+    this._renderModalList();
   },
 
-  _taskFormFields(prefix = '') {
-    const pid = prefix ? `${prefix}-` : '';
+  _renderModalList() {
+    const body = document.getElementById('cal-modal-body');
+    if (!body) return;
+    const existing = AppState.tasks.filter(t =>
+      t.member_id === this._cellMemberId && t.scheduled_date === this._cellDate
+    );
+
+    body.innerHTML = `
+      <div class="p-5 flex flex-col gap-2">
+        ${existing.length === 0
+          ? `<p class="text-slate-500 text-sm text-center py-6">Nenhuma tarefa neste dia.</p>`
+          : existing.map(t => `
+              <div class="flex items-center gap-2 bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5">
+                    ${t.demand_id ? '<i class="fa-solid fa-link text-slate-500 text-xs"></i>' : ''}
+                    <p class="text-sm text-white truncate ${t.status === 'done' ? 'line-through opacity-50' : ''}">${t.title}</p>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-0.5">${TYPE_LABEL[t.type] || ''} · ${t.priority === 'principal' ? 'Principal' : 'Secundária'}</p>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button onclick="CalendarCtrl.openEditForm('${t.id}')"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition-colors">
+                    <i class="fa-solid fa-pen text-xs"></i>
+                  </button>
+                  <button onclick="CalendarCtrl.deleteTask('${t.id}')"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-danger hover:bg-slate-600 transition-colors">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </div>`).join('')}
+
+        <button onclick="CalendarCtrl.openAddForm()"
+          class="w-full flex items-center justify-center gap-2 mt-2 border border-dashed border-slate-600
+                 hover:border-primary text-slate-400 hover:text-primary rounded-lg py-2.5 text-sm transition-colors">
+          <i class="fa-solid fa-plus text-xs"></i>Adicionar tarefa
+        </button>
+      </div>`;
+  },
+
+  openAddForm() {
+    this._selectedDemandId = null;
+    this._renderModalForm(null);
+  },
+
+  openEditForm(taskId) {
+    this._renderModalForm(taskId);
+  },
+
+  backToList() {
+    this._selectedDemandId = null;
+    this._renderModalList();
+  },
+
+  _renderModalForm(taskId) {
+    const task   = taskId ? AppState.tasks.find(t => t.id === taskId) : null;
+    const isEdit = !!task;
+    const body   = document.getElementById('cal-modal-body');
+    if (!body) return;
+
+    body.innerHTML = `
+      <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700">
+        <button onclick="CalendarCtrl.backToList()"
+          class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+          <i class="fa-solid fa-arrow-left text-xs"></i>
+        </button>
+        <p class="text-sm font-semibold text-white">${isEdit ? 'Editar tarefa' : 'Nova tarefa'}</p>
+      </div>
+      <div class="p-5">
+        ${isEdit ? this._editFormHTML(task) : this._addFormHTML()}
+      </div>`;
+
+    if (!isEdit) setTimeout(() => document.getElementById('cal-title')?.focus(), 50);
+  },
+
+  _addFormHTML() {
+    return `
+      <div class="flex bg-slate-700/50 border border-slate-600 rounded-lg p-0.5 mb-4">
+        <button id="tab-btn-free" onclick="CalendarCtrl.setTab('free')"
+          class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors bg-slate-600 text-white">
+          Tarefa livre
+        </button>
+        <button id="tab-btn-bank" onclick="CalendarCtrl.setTab('bank')"
+          class="flex-1 py-1.5 rounded-md text-sm font-medium transition-colors text-slate-400 hover:text-white">
+          Do banco
+        </button>
+      </div>
+
+      <div id="tab-content-free">
+        <form onsubmit="CalendarCtrl.addTask(event)" class="flex flex-col gap-3">
+          <input id="cal-title" type="text" required placeholder="Título da tarefa"
+            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
+                   text-sm focus:outline-none focus:border-primary transition-colors">
+          ${this._taskFormFields()}
+          <button type="submit"
+            class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1">
+            <i class="fa-solid fa-plus mr-1.5"></i>Adicionar tarefa
+          </button>
+        </form>
+      </div>
+
+      <div id="tab-content-bank" class="hidden flex flex-col gap-3">
+        ${this._demandListHTML()}
+        <div id="bank-assign-form" class="hidden flex flex-col gap-3">
+          <div class="flex items-center gap-2 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2">
+            <i class="fa-solid fa-link text-slate-400 text-xs"></i>
+            <span class="text-xs text-slate-400">Atribuindo:</span>
+            <span id="bank-selected-title" class="text-sm text-white font-medium truncate"></span>
+          </div>
+          <form onsubmit="CalendarCtrl.addTaskFromBank(event)" class="flex flex-col gap-3">
+            ${this._taskFormFields('bank')}
+            <button type="submit"
+              class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+              <i class="fa-solid fa-link mr-1.5"></i>Atribuir demanda
+            </button>
+          </form>
+        </div>
+      </div>`;
+  },
+
+  _editFormHTML(task) {
+    return `
+      <form onsubmit="CalendarCtrl.updateTask(event,'${task.id}')" class="flex flex-col gap-3">
+        <input id="cal-title" type="text" required value="${task.title.replace(/"/g, '&quot;')}"
+          class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                 text-sm focus:outline-none focus:border-primary transition-colors">
+        ${this._taskFormFields('', task)}
+        <button type="submit"
+          class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1">
+          <i class="fa-solid fa-floppy-disk mr-1.5"></i>Salvar alterações
+        </button>
+      </form>`;
+  },
+
+  _taskFormFields(prefix = '', task = null) {
+    const pid      = prefix ? `${prefix}-` : '';
+    const needTime = task?.type === 'treinamento' || task?.type === 'reuniao';
     return `
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -264,8 +324,8 @@ export const CalendarCtrl = {
           <select id="${pid}cal-priority"
             class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm
                    focus:outline-none focus:border-primary transition-colors">
-            <option value="principal">Principal</option>
-            <option value="secundaria">Secundária</option>
+            <option value="principal"  ${task?.priority === 'principal'  ? 'selected' : ''}>Principal</option>
+            <option value="secundaria" ${task?.priority === 'secundaria' ? 'selected' : ''}>Secundária</option>
           </select>
         </div>
         <div>
@@ -273,9 +333,9 @@ export const CalendarCtrl = {
           <select id="${pid}cal-shift"
             class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm
                    focus:outline-none focus:border-primary transition-colors">
-            <option value="manha">Manhã</option>
-            <option value="tarde">Tarde</option>
-            <option value="livre">Livre</option>
+            <option value="manha" ${task?.shift === 'manha' ? 'selected' : ''}>Manhã</option>
+            <option value="tarde" ${task?.shift === 'tarde' ? 'selected' : ''}>Tarde</option>
+            <option value="livre" ${task?.shift === 'livre' ? 'selected' : ''}>Livre</option>
           </select>
         </div>
       </div>
@@ -284,14 +344,15 @@ export const CalendarCtrl = {
         <select id="${pid}cal-type" onchange="CalendarCtrl.onTypeChange('${pid}')"
           class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
                  focus:outline-none focus:border-primary transition-colors">
-          ${TYPE_OPTS.map(o => `<option value="${o.v}">${o.l}</option>`).join('')}
+          ${TYPE_OPTS.map(o => `<option value="${o.v}" ${task?.type === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}
         </select>
       </div>
-      <div id="${pid}cal-time-wrap" class="hidden">
+      <div id="${pid}cal-time-wrap" class="${needTime ? '' : 'hidden'}">
         <label class="block text-xs text-slate-400 mb-1">Horário <span class="text-danger">*</span></label>
-        <input id="${pid}cal-time" type="time"
+        <input id="${pid}cal-time" type="time" value="${task?.event_time || ''}"
           class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
-                 focus:outline-none focus:border-primary transition-colors">
+                 focus:outline-none focus:border-primary transition-colors"
+          ${needTime ? 'required' : ''}>
       </div>`;
   },
 
@@ -338,18 +399,13 @@ export const CalendarCtrl = {
   selectDemand(id) {
     this._selectedDemandId = id;
     const demand = this._demands.find(d => d.id === id);
-
-    // Atualiza estilo dos botões
     document.querySelectorAll('[data-demand-id]').forEach(btn => {
       const sel = btn.dataset.demandId === id;
-      btn.classList.toggle('border-primary', sel);
-      btn.classList.toggle('bg-primary/20', sel);
-      btn.classList.toggle('text-white', sel);
+      btn.classList.toggle('border-primary',  sel);
+      btn.classList.toggle('bg-primary/20',   sel);
+      btn.classList.toggle('text-white',      sel);
       btn.classList.toggle('border-slate-600', !sel);
-      btn.classList.toggle('bg-slate-700/50', !sel && btn.matches(':hover'));
     });
-
-    // Mostra o formulário de atribuição
     const form = document.getElementById('bank-assign-form');
     form.classList.remove('hidden');
     document.getElementById('bank-selected-title').textContent = demand?.title || '';
@@ -360,7 +416,7 @@ export const CalendarCtrl = {
     const wrap  = document.getElementById(`${prefix}cal-time-wrap`);
     const input = document.getElementById(`${prefix}cal-time`);
     const needs = type === 'treinamento' || type === 'reuniao';
-    wrap.classList.toggle('hidden', !needs);
+    wrap?.classList.toggle('hidden', !needs);
     if (input) input.required = needs;
   },
 
@@ -436,17 +492,37 @@ export const CalendarCtrl = {
       .order('scheduled_date');
     setAppState({ tasks: data || [] });
 
-    this.closeCell();
     this._render();
+    this._renderModalList();
     window.Toast.show('Tarefa adicionada.', 'success');
+  },
+
+  async updateTask(e, taskId) {
+    e.preventDefault();
+    const title = document.getElementById('cal-title').value.trim();
+    const { priority, shift, type, time } = this._getFormValues();
+    if ((type === 'treinamento' || type === 'reuniao') && !time) {
+      window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
+    }
+    const { error } = await db.from('tasks_iss')
+      .update({ title, priority, shift, type, event_time: time || null })
+      .eq('id', taskId);
+    if (error) { window.Toast.show('Erro ao salvar.', 'error'); return; }
+
+    setAppState({ tasks: AppState.tasks.map(t =>
+      t.id === taskId ? { ...t, title, priority, shift, type, event_time: time || null } : t
+    )});
+    this._render();
+    this._renderModalList();
+    window.Toast.show('Tarefa atualizada.', 'success');
   },
 
   async deleteTask(taskId) {
     const { error } = await db.from('tasks_iss').delete().eq('id', taskId);
     if (error) { window.Toast.show('Erro ao excluir.', 'error'); return; }
     setAppState({ tasks: AppState.tasks.filter(t => t.id !== taskId) });
-    this.closeCell();
     this._render();
+    this._renderModalList();
     window.Toast.show('Tarefa removida.', 'info');
   },
 };
