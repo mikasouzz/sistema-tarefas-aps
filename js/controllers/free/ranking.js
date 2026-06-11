@@ -180,7 +180,7 @@ export const RankingCtrl = {
                <span class="text-2xl">${SHIFT_ICON[shift]}</span>
                <span class="text-2xl font-bold text-white">${SHIFT_LABEL[shift]}</span>
              </div>
-             <p class="text-slate-400 text-xs mt-1">${count} conclusão${count !== 1 ? 'ões' : ''} neste turno</p>`
+             <p class="text-slate-400 text-xs mt-1">${count} conclus${count !== 1 ? 'ões' : 'ão'} neste turno</p>`
           : `<span class="text-slate-500 text-2xl font-bold">—</span>
              <p class="text-slate-500 text-xs mt-1">Nenhuma tarefa concluída</p>`}
       </div>`;
