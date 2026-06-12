@@ -17,7 +17,13 @@ const TYPE_DOT = {
   treinamento: 'bg-emerald-500',
   reuniao:     'bg-rose-500',
 };
-const TYPE_LABEL = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
+const TYPE_LABEL  = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
+const SHIFT_ORDER  = { manha: 0, tarde: 1, livre: 2 };
+const SHIFT_HEADER = {
+  manha: '<div class="flex items-center gap-1 mt-1.5 first:mt-0 mb-0.5"><i class="fa-solid fa-sun text-amber-400 text-[9px]"></i><span class="text-[9px] font-semibold text-amber-400 uppercase tracking-wide">Manhã</span></div>',
+  tarde: '<div class="flex items-center gap-1 mt-1.5 mb-0.5"><i class="fa-solid fa-cloud-sun text-orange-400 text-[9px]"></i><span class="text-[9px] font-semibold text-orange-400 uppercase tracking-wide">Tarde</span></div>',
+  livre: '<div class="flex items-center gap-1 mt-1.5 mb-0.5"><i class="fa-solid fa-clock text-teal-400 text-[9px]"></i><span class="text-[9px] font-semibold text-teal-400 uppercase tracking-wide">Livre</span></div>',
+};
 
 export const CalendarCtrl = {
   _container: null,
@@ -95,7 +101,15 @@ export const CalendarCtrl = {
                 </div>
                 ${weekDays.map(d => {
                   const dateStr  = toDateStr(d);
-                  const dayTasks = weekTasks.filter(t => t.member_id === m.id && t.scheduled_date === dateStr);
+                  const dayTasks = weekTasks
+                    .filter(t => t.member_id === m.id && t.scheduled_date === dateStr)
+                    .sort((a, b) => {
+                      const sd = (SHIFT_ORDER[a.shift] ?? 99) - (SHIFT_ORDER[b.shift] ?? 99);
+                      if (sd !== 0) return sd;
+                      if (a.priority === 'principal' && b.priority !== 'principal') return -1;
+                      if (a.priority !== 'principal' && b.priority === 'principal') return  1;
+                      return 0;
+                    });
                   return `
                     <div onclick="CalendarCtrl.openCell('${m.id}','${dateStr}')"
                       class="border-t border-l border-slate-700 p-2 min-h-[80px] cursor-pointer hover:bg-slate-700/40 transition-colors group relative">
@@ -103,10 +117,11 @@ export const CalendarCtrl = {
                         ? `<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                              <i class="fa-solid fa-plus text-slate-500"></i>
                            </div>`
-                        : dayTasks.map(t => `
-                            <div class="flex items-center gap-1.5 mb-1">
-                              <span class="w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[t.type] || 'bg-slate-500'} ${t.status === 'done' ? 'opacity-40' : ''}"></span>
-                              <span class="text-xs text-slate-300 truncate ${t.status === 'done' ? 'line-through opacity-40' : ''}">
+                        : dayTasks.map((t, idx) => `
+                            ${t.shift !== (dayTasks[idx - 1]?.shift) ? (SHIFT_HEADER[t.shift] || '') : ''}
+                            <div class="flex items-center gap-1.5 mb-1 ${t.status === 'done' ? 'opacity-40' : ''}">
+                              <span class="w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[t.type] || 'bg-slate-500'}"></span>
+                              <span class="text-xs text-slate-300 truncate ${t.status === 'done' ? 'line-through' : ''}">
                                 ${t.demand_id ? '<i class="fa-solid fa-link text-[8px] text-slate-500 mr-0.5"></i>' : ''}${t.title}
                               </span>
                             </div>`).join('')}
