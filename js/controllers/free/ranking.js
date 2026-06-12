@@ -111,25 +111,27 @@ export const RankingCtrl = {
       .sort((a, b) => b.score - a.score || b.done - a.done || a.name.localeCompare(b.name));
 
     this._container.innerHTML = `
-      <!-- Cabeçalho -->
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold text-white flex items-center gap-2">
-          <i class="fa-solid fa-chart-line text-primary"></i> Visão Geral
-        </h2>
-        <p class="text-slate-400 text-sm mt-1">${weekLabel}</p>
-      </div>
+      <div class="flex-1 flex flex-col min-h-0">
+        <!-- Cabeçalho -->
+        <div class="mb-6 shrink-0">
+          <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-primary"></i> Visão Geral
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">${weekLabel}</p>
+        </div>
 
-      <!-- 3 Cards de destaque -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        ${this._cardTaxaGeral(pctCurr, doneCurr, totalCurr)}
-        ${this._cardEvolucao(pctCurr, pctLast, delta)}
-        ${this._cardTurno(bestShift, bestShiftCount)}
-      </div>
+        <!-- 3 Cards de destaque -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 shrink-0">
+          ${this._cardTaxaGeral(pctCurr, doneCurr, totalCurr)}
+          ${this._cardEvolucao(pctCurr, pctLast, delta)}
+          ${this._cardTurno(bestShift, bestShiftCount)}
+        </div>
 
-      <!-- Corpo: taxa por tipo + ranking -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        ${this._sectionTipos(typeStats)}
-        ${this._sectionRanking(ranking)}
+        <!-- Corpo: taxa por tipo + ranking -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+          ${this._sectionTipos(typeStats)}
+          ${this._sectionRanking(ranking)}
+        </div>
       </div>`;
   },
 
@@ -191,7 +193,7 @@ export const RankingCtrl = {
 
   _sectionTipos(typeStats) {
     return `
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 overflow-y-auto">
         <p class="text-sm font-semibold text-white mb-4">Conclusão por tipo</p>
         ${typeStats.length === 0
           ? `<p class="text-slate-500 text-sm text-center py-8">Nenhuma tarefa nessa semana.</p>`
@@ -215,7 +217,7 @@ export const RankingCtrl = {
 
   _sectionRanking(ranking) {
     return `
-      <div>
+      <div class="overflow-y-auto">
         <p class="text-sm font-semibold text-white mb-4">Ranking</p>
         ${ranking.length === 0
           ? `<div class="text-center py-12 text-slate-500 bg-slate-800 border border-slate-700 rounded-xl">

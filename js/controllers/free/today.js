@@ -50,12 +50,12 @@ export const TodayCtrl = {
       (b.pinned - a.pinned) || new Date(b.created_at) - new Date(a.created_at)
     );
     return `
-      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-2">
+      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div class="px-4 py-3 border-b border-slate-700 flex items-center gap-2 shrink-0">
           <i class="fa-solid fa-bell text-amber-400 text-sm"></i>
           <p class="text-sm font-semibold text-white">Avisos</p>
         </div>
-        <div class="divide-y divide-slate-700/60">
+        <div class="divide-y divide-slate-700/60 overflow-y-auto flex-1">
           ${notices.length === 0
             ? `<div class="px-4 py-8 text-center text-slate-500 text-sm">
                  <i class="fa-solid fa-bell-slash text-2xl mb-2 block opacity-30"></i>
@@ -82,7 +82,7 @@ export const TodayCtrl = {
 
     if (this.tasks.length === 0) {
       c.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 min-h-0">
           <div class="text-center py-20 text-slate-500">
             <i class="fa-solid fa-calendar-check text-5xl mb-4 block opacity-40"></i>
             <p class="text-lg">Nenhuma tarefa para hoje.</p>
@@ -101,11 +101,11 @@ export const TodayCtrl = {
     const allDone  = doneAll === totalAll;
 
     c.innerHTML = `
-      <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 min-h-0">
 
         <!-- Tarefas -->
-        <div>
-          <div class="mb-5">
+        <div class="flex flex-col min-h-0">
+          <div class="mb-5 shrink-0">
             <h2 class="text-xl font-semibold text-white capitalize">${today}</h2>
             <p class="text-slate-400 text-sm mt-1">
               ${groups.length} membro${groups.length !== 1 ? 's' : ''} ·
@@ -113,7 +113,7 @@ export const TodayCtrl = {
             </p>
           </div>
 
-          <div class="mb-6 bg-slate-800 border border-slate-700 rounded-xl p-4">
+          <div class="mb-6 shrink-0 bg-slate-800 border border-slate-700 rounded-xl p-4">
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-semibold text-white">Meta coletiva do dia</span>
               <span class="text-sm ${allDone ? 'text-accent font-medium' : 'text-slate-400'}">${doneAll} de ${totalAll} concluídas</span>
@@ -129,8 +129,10 @@ export const TodayCtrl = {
             </p>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            ${groups.map(g => this._memberPanel(g)).join('')}
+          <div class="flex-1 overflow-y-auto pr-1">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              ${groups.map(g => this._memberPanel(g)).join('')}
+            </div>
           </div>
         </div>
 

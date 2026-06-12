@@ -55,7 +55,8 @@ export const CalendarCtrl = {
     const weekTasks = tasks.filter(t => t.scheduled_date >= weekStart && t.scheduled_date <= weekEnd);
 
     this._container.innerHTML = `
-      <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-3 shrink-0">
         <h2 class="text-xl font-semibold text-white">Cronograma</h2>
         <div class="flex items-center gap-2">
           <button onclick="CalendarCtrl.shiftWeek(-1)"
@@ -77,17 +78,17 @@ export const CalendarCtrl = {
         </div>
       </div>
 
-      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-auto">
+      <div class="flex-1 min-h-0 bg-slate-800 border border-slate-700 rounded-xl overflow-auto">
         <div class="cal-grid">
 
-          <div class="px-4 py-3 border-b border-r border-slate-700 bg-slate-800/80 sticky left-0 z-10">
+          <div class="px-4 py-3 border-b border-r border-slate-700 bg-slate-800 sticky top-0 left-0 z-20">
             <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Membro</span>
           </div>
 
           ${weekDays.map((d, i) => {
             const isToday = toDateStr(d) === todayStr();
             return `
-              <div class="px-3 py-3 border-b border-l border-slate-700 text-center">
+              <div class="px-3 py-3 border-b border-l border-slate-700 text-center bg-slate-800 sticky top-0 z-10">
                 <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
                 <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtShort(d)}</p>
               </div>`;
@@ -129,6 +130,7 @@ export const CalendarCtrl = {
                 }).join('')}
               `).join('')}
         </div>
+      </div>
       </div>`;
   },
 

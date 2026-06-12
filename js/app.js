@@ -85,8 +85,8 @@ export const App = {
         <i class="fa-solid ${icon}"></i><span class="hidden sm:inline">${label}</span>
       </button>`;
     return `
-      <div class="min-h-screen flex flex-col">
-        <nav class="bg-slate-800 border-b border-slate-700 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+      <div class="h-full flex flex-col">
+        <nav class="bg-slate-800 border-b border-slate-700 px-4 sm:px-6 py-3 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
             <button onclick="App.navigate('home')"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
@@ -101,7 +101,7 @@ export const App = {
             ${btn('ranking',  'fa-chart-line',     'Visão Geral')}
           </div>
         </nav>
-        <main id="content" class="flex-1 p-4 sm:p-6"></main>
+        <main id="content" class="flex-1 p-4 sm:p-6 overflow-hidden flex flex-col"></main>
       </div>`;
   },
 
@@ -114,10 +114,10 @@ export const App = {
         <i class="fa-solid ${icon} w-4 text-center shrink-0"></i>${label}
       </button>`;
     return `
-      <div class="min-h-screen flex">
+      <div class="h-full flex">
 
         <!-- Sidebar -->
-        <aside class="w-52 shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col sticky top-0 h-screen">
+        <aside class="w-52 shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col h-full">
           <div class="px-4 py-4 border-b border-slate-700">
             <p class="font-semibold text-white text-sm">Tarefas <span class="text-slate-400 font-normal">APS</span></p>
             <span class="mt-1 inline-block bg-violet-700 text-violet-100 text-xs px-2 py-0.5 rounded-full font-medium">Supervisão</span>
@@ -139,7 +139,7 @@ export const App = {
         </aside>
 
         <!-- Conteúdo -->
-        <main id="content" class="flex-1 p-6 overflow-auto"></main>
+        <main id="content" class="flex-1 p-6 overflow-hidden flex flex-col"></main>
       </div>`;
   },
 

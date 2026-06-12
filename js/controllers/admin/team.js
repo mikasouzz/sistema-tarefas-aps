@@ -21,7 +21,8 @@ export const TeamCtrl = {
   _render() {
     const { members } = AppState;
     this._container.innerHTML = `
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex items-center justify-between mb-6 shrink-0">
         <div>
           <h2 class="text-xl font-semibold text-white">Gestão de Equipe</h2>
           <p class="text-slate-400 text-sm mt-1">${members.length} colaborador${members.length !== 1 ? 'es' : ''} cadastrado${members.length !== 1 ? 's' : ''}</p>
@@ -32,7 +33,7 @@ export const TeamCtrl = {
         </button>
       </div>
 
-      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+      <div class="flex-1 min-h-0 bg-slate-800 border border-slate-700 rounded-xl overflow-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
@@ -77,6 +78,7 @@ export const TeamCtrl = {
                   </tr>`).join('')}
           </tbody>
         </table>
+      </div>
       </div>`;
   },
 

@@ -39,16 +39,18 @@ export const BankCtrl = {
     const estudos    = this._items.filter(i => i.demand_category === 'estudo');
 
     this._container.innerHTML = `
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold text-white">Banco &amp; Estudos</h2>
-        <p class="text-slate-400 text-sm mt-1">
-          Demandas permanecem no banco ao serem atribuídas — cada atribuição cria uma referência no cronograma.
-        </p>
-      </div>
+      <div class="flex-1 flex flex-col min-h-0">
+        <div class="mb-6 shrink-0">
+          <h2 class="text-xl font-semibold text-white">Banco &amp; Estudos</h2>
+          <p class="text-slate-400 text-sm mt-1">
+            Demandas permanecem no banco ao serem atribuídas — cada atribuição cria uma referência no cronograma.
+          </p>
+        </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        ${this._panel('reprimida', 'fa-triangle-exclamation', 'rose',  'Demandas Reprimidas',       reprimidas, 'Nova demanda reprimida…')}
-        ${this._panel('estudo',    'fa-book-open',             'blue',  'Temas para Estudo &amp; Dev.', estudos,    'Novo tema de estudo…')}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+          ${this._panel('reprimida', 'fa-triangle-exclamation', 'rose',  'Demandas Reprimidas',       reprimidas, 'Nova demanda reprimida…')}
+          ${this._panel('estudo',    'fa-book-open',             'blue',  'Temas para Estudo &amp; Dev.', estudos,    'Novo tema de estudo…')}
+        </div>
       </div>`;
   },
 
@@ -82,7 +84,7 @@ export const BankCtrl = {
           </button>
         </form>
 
-        <ul class="divide-y divide-slate-700/50 flex-1">
+        <ul class="divide-y divide-slate-700/50 flex-1 overflow-y-auto">
           ${items.length === 0
             ? `<li class="px-5 py-6 text-slate-500 text-sm text-center">Nenhum item cadastrado.</li>`
             : items.map(i => {

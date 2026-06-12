@@ -17,17 +17,18 @@ export const NoticesCtrl = {
     );
 
     this._container.innerHTML = `
-      <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-3 shrink-0">
         <div>
           <h2 class="text-xl font-semibold text-white">Painel de Avisos</h2>
           <p class="text-slate-400 text-sm mt-1">Avisos visíveis para toda a equipe no painel de ranking.</p>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
 
         <!-- Formulário novo aviso -->
-        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 overflow-y-auto">
           <p class="text-sm font-semibold text-slate-300 mb-4">
             <i class="fa-solid fa-plus text-primary mr-1.5"></i>Novo aviso
           </p>
@@ -50,7 +51,7 @@ export const NoticesCtrl = {
         </div>
 
         <!-- Lista de avisos -->
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3 overflow-y-auto">
           ${notices.length === 0
             ? `<div class="text-center py-12 text-slate-500 bg-slate-800 border border-slate-700 rounded-xl">
                  <i class="fa-solid fa-bell-slash text-3xl mb-3 block opacity-30"></i>
@@ -59,6 +60,7 @@ export const NoticesCtrl = {
             : notices.map(n => this._card(n)).join('')}
         </div>
 
+      </div>
       </div>
 
       <!-- Modal editar -->

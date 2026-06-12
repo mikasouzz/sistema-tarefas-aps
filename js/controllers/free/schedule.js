@@ -36,7 +36,7 @@ export const ScheduleCtrl = {
     const { selectedMemberId } = AppState;
 
     this._container.innerHTML = `
-      <div class="flex gap-4 flex-col h-[calc(100vh-130px)]">
+      <div class="flex gap-4 flex-col h-full">
 
         <!-- Week nav bar (mesmo padrão do calendário admin) -->
         <div class="flex items-center justify-between gap-3 flex-wrap shrink-0">

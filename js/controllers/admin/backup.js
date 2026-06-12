@@ -23,6 +23,7 @@ export const BackupCtrl = {
 
   _render() {
     this._container.innerHTML = `
+      <div class="flex-1 overflow-y-auto">
       <div class="mb-6">
         <h2 class="text-xl font-semibold text-white">Backup &amp; Restauração</h2>
         <p class="text-slate-400 text-sm mt-1">Exporte ou importe todos os dados do sistema em formato JSON.</p>
@@ -73,6 +74,7 @@ export const BackupCtrl = {
 
       <!-- Preview / resultado -->
       <div id="backup-feedback" class="mt-6 max-w-3xl"></div>
+      </div>
     `;
   },
 

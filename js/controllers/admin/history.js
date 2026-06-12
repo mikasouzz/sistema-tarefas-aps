@@ -17,7 +17,8 @@ export const HistoryCtrl = {
   _render(items) {
     const { members } = AppState;
     this._container.innerHTML = `
-      <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-3 shrink-0">
         <div>
           <h2 class="text-xl font-semibold text-white">Histórico e Auditoria</h2>
           <p class="text-slate-400 text-sm mt-1">Filtre e exporte registros de execuções.</p>
@@ -30,7 +31,7 @@ export const HistoryCtrl = {
       </div>
 
       <!-- Filters -->
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-5">
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-5 shrink-0">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Data inicial</label>
@@ -69,11 +70,12 @@ export const HistoryCtrl = {
       </div>
 
       <!-- Results -->
-      <div id="h-results">
+      <div id="h-results" class="flex-1 overflow-y-auto">
         <div class="text-center py-12 text-slate-500">
           <i class="fa-solid fa-filter text-4xl mb-3 block opacity-30"></i>
           <p>Use os filtros acima para buscar registros.</p>
         </div>
+      </div>
       </div>`;
   },
 
@@ -115,9 +117,9 @@ export const HistoryCtrl = {
 
     container.innerHTML = `
       <p class="text-sm text-slate-400 mb-3">${items.length} registro${items.length !== 1 ? 's' : ''} encontrado${items.length !== 1 ? 's' : ''}</p>
-      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-auto">
+      <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
         <table class="w-full text-sm">
-          <thead>
+          <thead class="sticky top-0 z-10 bg-slate-800">
             <tr class="border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
               <th class="text-left px-4 py-3 font-medium">Data</th>
               <th class="text-left px-4 py-3 font-medium">Funcionário</th>
