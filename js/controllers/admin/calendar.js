@@ -397,10 +397,39 @@ export const CalendarCtrl = {
       </div>`;
 
     return `
-      <div class="max-h-48 overflow-y-auto pr-1">
+      <input type="text" placeholder="Filtrar demandas…" oninput="CalendarCtrl.filterDemands(this.value)"
+        class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+               placeholder-slate-500 focus:outline-none focus:border-primary transition-colors mb-2">
+      <div id="demand-list" class="max-h-48 overflow-y-auto pr-1">
         ${section('Demandas Reprimidas', 'fa-triangle-exclamation', 'text-rose-400', reprimidas)}
         ${section('Temas de Estudo', 'fa-book-open', 'text-blue-400', estudos)}
       </div>`;
+  },
+
+  filterDemands(value) {
+    const q = value.trim().toLowerCase();
+    const filtered = q ? this._demands.filter(d => d.title.toLowerCase().includes(q)) : this._demands;
+    const reprimidas = filtered.filter(d => d.demand_category === 'reprimida');
+    const estudos    = filtered.filter(d => d.demand_category === 'estudo');
+    const section = (label, icon, color, items) => items.length === 0 ? '' : `
+      <div class="mb-2">
+        <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1.5">
+          <i class="fa-solid ${icon} ${color}"></i>${label}
+        </p>
+        <div class="flex flex-col gap-1">
+          ${items.map(d => `
+            <button type="button" data-demand-id="${d.id}" onclick="CalendarCtrl.selectDemand('${d.id}')"
+              class="text-left px-3 py-2 rounded-lg text-sm transition-colors border
+                     text-slate-300 border-slate-600 hover:border-primary hover:text-white hover:bg-slate-700/50">
+              ${d.title}
+            </button>`).join('')}
+        </div>
+      </div>`;
+    const list = document.getElementById('demand-list');
+    if (list) list.innerHTML =
+      (section('Demandas Reprimidas', 'fa-triangle-exclamation', 'text-rose-400', reprimidas) +
+       section('Temas de Estudo', 'fa-book-open', 'text-blue-400', estudos)) ||
+      `<p class="text-slate-500 text-sm text-center py-3">Nenhum resultado.</p>`;
   },
 
   setTab(tab) {
