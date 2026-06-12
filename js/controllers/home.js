@@ -49,7 +49,10 @@ export const HomeCtrl = {
 
         </div>
 
-        <p class="text-slate-600 text-xs">APS — Acesso interno · ${VERSION}</p>
+        <button onclick="App.navigate('changelog')"
+          class="text-slate-600 hover:text-slate-400 text-xs transition-colors underline underline-offset-2">
+          APS — Acesso interno · ${VERSION}
+        </button>
       </div>
     `;
   },

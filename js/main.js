@@ -4,6 +4,7 @@ import { App }      from './app.js';
 
 // Free view controllers
 import './controllers/home.js';
+import './controllers/changelog.js';
 import './controllers/free/today.js';
 import './controllers/free/schedule.js';
 import './controllers/free/demands.js';

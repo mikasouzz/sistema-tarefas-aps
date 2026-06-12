@@ -36,10 +36,10 @@ export const App = {
     if (view === 'admin' && tab) setAppState({ adminTab: tab });
 
     const shellChanged = prevView !== view;
-    if (shellChanged || view === 'home') {
+    if (shellChanged || view === 'home' || view === 'changelog') {
       this._renderShell(view);
     }
-    if (view !== 'home') {
+    if (view !== 'home' && view !== 'changelog') {
       this._renderTab(view, tab);
     }
   },
@@ -48,6 +48,10 @@ export const App = {
     const app = document.getElementById('app');
     if (view === 'home') {
       window.HomeCtrl.init(app);
+      return;
+    }
+    if (view === 'changelog') {
+      window.ChangelogCtrl.init(app);
       return;
     }
     app.innerHTML = view === 'free' ? this._freeShell() : this._adminShell();
@@ -133,7 +137,8 @@ export const App = {
             ${btn('backup',   'fa-box-archive',          'Backup')}
           </nav>
           <div class="px-4 py-2 border-t border-slate-700">
-            <p class="text-slate-600 text-xs mb-2 text-center">${VERSION}</p>
+            <button onclick="App.navigate('changelog')"
+              class="w-full text-slate-600 hover:text-slate-400 text-xs mb-2 text-center transition-colors underline underline-offset-2">${VERSION}</button>
             <button onclick="AuthCtrl.logout()"
               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-danger hover:bg-slate-700 transition-colors w-full text-left">
               <i class="fa-solid fa-right-from-bracket w-4 text-center shrink-0"></i>Sair
