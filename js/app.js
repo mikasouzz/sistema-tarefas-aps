@@ -1,6 +1,8 @@
 import { db } from './db.js';
 import { AppState, setAppState } from './state.js';
 
+export const VERSION = 'v1.0';
+
 export const App = {
   generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -130,7 +132,8 @@ export const App = {
             ${btn('notices',  'fa-bell',                 'Avisos')}
             ${btn('backup',   'fa-box-archive',          'Backup')}
           </nav>
-          <div class="p-2 border-t border-slate-700">
+          <div class="px-4 py-2 border-t border-slate-700">
+            <p class="text-slate-600 text-xs mb-2 text-center">${VERSION}</p>
             <button onclick="AuthCtrl.logout()"
               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-danger hover:bg-slate-700 transition-colors w-full text-left">
               <i class="fa-solid fa-right-from-bracket w-4 text-center shrink-0"></i>Sair

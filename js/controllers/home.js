@@ -1,3 +1,5 @@
+import { VERSION } from '../app.js';
+
 export const HomeCtrl = {
   init(container) {
     container.innerHTML = `
@@ -47,7 +49,7 @@ export const HomeCtrl = {
 
         </div>
 
-        <p class="text-slate-600 text-xs">APS — Acesso interno</p>
+        <p class="text-slate-600 text-xs">APS — Acesso interno · ${VERSION}</p>
       </div>
     `;
   },
