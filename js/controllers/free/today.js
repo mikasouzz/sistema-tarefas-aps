@@ -61,14 +61,20 @@ export const TodayCtrl = {
                  <i class="fa-solid fa-bell-slash text-2xl mb-2 block opacity-30"></i>
                  Nenhum aviso no momento.
                </div>`
-            : notices.map(n => `
+            : notices.map(n => {
+                const date = new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                return `
                 <div class="px-4 py-3">
-                  <div class="flex items-center gap-1.5 mb-1">
-                    ${n.pinned ? PIN : ''}
-                    <p class="text-sm font-semibold text-white leading-tight">${n.title}</p>
+                  <div class="flex items-center justify-between gap-2 mb-1">
+                    <div class="flex items-center gap-1.5">
+                      ${n.pinned ? PIN : ''}
+                      <p class="text-sm font-semibold text-white leading-tight">${n.title}</p>
+                    </div>
+                    <span class="text-xs text-slate-500 shrink-0">${date}</span>
                   </div>
                   <p class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">${n.content}</p>
-                </div>`).join('')}
+                </div>`;
+              }).join('')}
         </div>
       </div>`;
   },
