@@ -9,20 +9,22 @@ export const App = {
   },
 
   async loadData() {
-    const [mRes, tRes, nRes] = await Promise.all([
+    const [mRes, tRes, nRes, aRes] = await Promise.all([
       db.from('tb_aps_members').select('*').order('name'),
       db.from('tb_aps_tasks')
         .select('*, tb_aps_members(name, role)')
         .not('member_id', 'is', null)
         .order('scheduled_date'),
       db.from('tb_aps_notices').select('*').order('created_at', { ascending: false }),
+      db.from('tb_aps_absences').select('*'),
     ]);
     if (mRes.error) window.Toast?.show('Erro ao carregar membros.', 'error');
     if (tRes.error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
     setAppState({
-      members: mRes.data  || [],
-      tasks:   tRes.data  || [],
-      notices: nRes.data  || [],
+      members:  mRes.data  || [],
+      tasks:    tRes.data  || [],
+      notices:  nRes.data  || [],
+      absences: aRes.data  || [],
     });
   },
 

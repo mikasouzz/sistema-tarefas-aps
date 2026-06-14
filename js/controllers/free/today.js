@@ -169,11 +169,17 @@ export const TodayCtrl = {
   },
 
   _memberPanel(group) {
-    const member    = AppState.members.find(m => m.id === group.memberId);
+    const member     = AppState.members.find(m => m.id === group.memberId);
     const onVacation = member?.on_vacation;
-    const vacStart  = member?.vacation_start;
-    const vacEnd    = member?.vacation_end;
-    const fmtDate   = s => { if (!s) return ''; const [,mo,d] = s.split('-'); return `${d}/${mo}`; };
+    const vacStart   = member?.vacation_start;
+    const vacEnd     = member?.vacation_end;
+    const fmtDate    = s => { if (!s) return ''; const [,mo,d] = s.split('-'); return `${d}/${mo}`; };
+
+    const absence    = AppState.absences?.find(a => a.member_id === group.memberId && a.date === todayStr());
+    const ABSENCE_LABEL = { manha: 'pela manhã', tarde: 'pela tarde', dia_todo: 'o dia todo' };
+
+    const borderClass  = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
+    const dividerClass = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
 
     const initial   = group.name.charAt(0).toUpperCase();
     const total     = group.tasks.length;
@@ -181,8 +187,8 @@ export const TodayCtrl = {
     const allDone   = doneCount === total;
 
     return `
-      <div class="bg-slate-800 border ${onVacation ? 'border-amber-700/50' : 'border-slate-700'} rounded-xl overflow-hidden flex flex-col">
-        <div class="px-4 py-3 border-b ${onVacation ? 'border-amber-700/50' : 'border-slate-700'} flex items-center gap-3">
+      <div class="bg-slate-800 border ${borderClass} rounded-xl overflow-hidden flex flex-col">
+        <div class="px-4 py-3 border-b ${dividerClass} flex items-center gap-3">
           <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0
                       ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
             ${allDone ? '<i class="fa-solid fa-check text-xs"></i>' : initial}
@@ -192,6 +198,7 @@ export const TodayCtrl = {
             <p class="text-xs text-slate-400">${doneCount} de ${total} concluída${total !== 1 ? 's' : ''}</p>
           </div>
           ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-sm shrink-0"></i>' : ''}
+          ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-sm shrink-0"></i>' : ''}
         </div>
         ${onVacation ? `
           <div class="px-4 py-2 bg-amber-900/20 border-b border-amber-700/40 flex items-center gap-1.5">
@@ -199,6 +206,11 @@ export const TodayCtrl = {
             <span class="text-xs text-amber-300">
               De férias${vacStart && vacEnd ? ` · ${fmtDate(vacStart)} a ${fmtDate(vacEnd)}` : ''}
             </span>
+          </div>` : ''}
+        ${absence && !onVacation ? `
+          <div class="px-4 py-2 bg-rose-900/20 border-b border-rose-700/40 flex items-center gap-1.5">
+            <i class="fa-solid fa-user-slash text-rose-400 text-xs"></i>
+            <span class="text-xs text-rose-300">Ausente ${ABSENCE_LABEL[absence.shift] || ''}</span>
           </div>` : ''}
         <div class="flex flex-col gap-2 p-3">
           ${group.tasks.map(t => this._card(t)).join('')}

@@ -117,15 +117,32 @@ export const CalendarCtrl = {
                       if (a.priority !== 'principal' && b.priority === 'principal') return  1;
                       return 0;
                     });
+                  const absence  = AppState.absences.find(a => a.member_id === m.id && a.date === dateStr);
+                  const absDay   = absence?.shift === 'dia_todo';
+                  const absBanner = absence && !absDay
+                    ? `<div class="flex items-center gap-1 mb-1.5">
+                         <i class="fa-solid fa-user-slash text-rose-500 text-[9px]"></i>
+                         <span class="text-[9px] font-semibold text-rose-500 uppercase tracking-wide">Ausente ${absence.shift === 'manha' ? 'manhã' : 'tarde'}</span>
+                       </div>`
+                    : '';
                   if (vacDay) return `
                     <div class="border-t border-l border-slate-700 p-2 min-h-[80px] relative bg-amber-900/10 cursor-not-allowed">
                       <div class="absolute inset-0 flex items-center justify-center">
                         <i class="fa-solid fa-umbrella-beach text-amber-800/60 text-base"></i>
                       </div>
                     </div>`;
+                  if (absDay) return `
+                    <div onclick="CalendarCtrl.openCell('${m.id}','${dateStr}')"
+                      class="border-t border-l border-slate-700 p-2 min-h-[80px] relative bg-rose-900/10 cursor-pointer hover:bg-rose-900/15 transition-colors">
+                      <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
+                        <i class="fa-solid fa-user-slash text-rose-800/60 text-base"></i>
+                        <span class="text-[9px] text-rose-700/70 font-semibold uppercase tracking-wide">Ausente</span>
+                      </div>
+                    </div>`;
                   return `
                     <div onclick="CalendarCtrl.openCell('${m.id}','${dateStr}')"
                       class="border-t border-l border-slate-700 p-2 min-h-[80px] cursor-pointer hover:bg-slate-700/40 transition-colors group relative">
+                      ${absBanner}
                       ${dayTasks.length === 0
                         ? `<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                              <i class="fa-solid fa-plus text-slate-500"></i>
@@ -147,6 +164,39 @@ export const CalendarCtrl = {
         </div>
       </div>
       </div>`;
+  },
+
+  async toggleAbsence(memberId, dateStr, clickedShift) {
+    const existing = AppState.absences.find(a => a.member_id === memberId && a.date === dateStr);
+
+    let newShift = null;
+    if (!existing) {
+      newShift = clickedShift;
+    } else if (existing.shift === 'dia_todo') {
+      newShift = clickedShift === 'manha' ? 'tarde' : 'manha';
+    } else if (existing.shift === clickedShift) {
+      newShift = null; // desligar
+    } else {
+      newShift = 'dia_todo'; // ligar o outro turno também
+    }
+
+    if (existing && newShift === null) {
+      const { error } = await db.from('tb_aps_absences').delete().eq('id', existing.id);
+      if (error) { window.Toast.show('Erro ao remover ausência.', 'error'); return; }
+      setAppState({ absences: AppState.absences.filter(a => a.id !== existing.id) });
+    } else if (existing) {
+      const { error } = await db.from('tb_aps_absences').update({ shift: newShift }).eq('id', existing.id);
+      if (error) { window.Toast.show('Erro ao atualizar ausência.', 'error'); return; }
+      existing.shift = newShift;
+    } else {
+      const id = window.App.generateId();
+      const { error } = await db.from('tb_aps_absences').insert({ id, member_id: memberId, date: dateStr, shift: newShift });
+      if (error) { window.Toast.show('Erro ao registrar ausência.', 'error'); return; }
+      AppState.absences.push({ id, member_id: memberId, date: dateStr, shift: newShift });
+    }
+
+    this._render();
+    if (document.getElementById('cal-modal-body')) this._renderModalList();
   },
 
   async toggleStatus(id, current) {
@@ -234,6 +284,11 @@ export const CalendarCtrl = {
     const existing = AppState.tasks.filter(t =>
       t.member_id === this._cellMemberId && t.scheduled_date === this._cellDate
     );
+    const absence  = AppState.absences.find(a => a.member_id === this._cellMemberId && a.date === this._cellDate);
+    const absManha = absence?.shift === 'manha' || absence?.shift === 'dia_todo';
+    const absTarde = absence?.shift === 'tarde' || absence?.shift === 'dia_todo';
+    const mid = this._cellMemberId;
+    const dt  = this._cellDate;
 
     body.innerHTML = `
       <div class="p-5 flex flex-col gap-2">
@@ -269,6 +324,28 @@ export const CalendarCtrl = {
                  hover:border-primary text-slate-400 hover:text-primary rounded-lg py-2.5 text-sm transition-colors">
           <i class="fa-solid fa-plus text-xs"></i>Adicionar tarefa
         </button>
+
+        <div class="border-t border-slate-700 pt-3 mt-1">
+          <p class="text-xs text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-user-slash"></i> Ausência
+          </p>
+          <div class="flex gap-2">
+            <button onclick="CalendarCtrl.toggleAbsence('${mid}','${dt}','manha')"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors
+                     ${absManha ? 'bg-rose-900/40 border-rose-700 text-rose-300' : 'bg-slate-700/50 border-slate-600 text-slate-400 hover:border-rose-700 hover:text-rose-400'}">
+              <i class="fa-solid fa-sun text-xs"></i> Manhã
+            </button>
+            <button onclick="CalendarCtrl.toggleAbsence('${mid}','${dt}','tarde')"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors
+                     ${absTarde ? 'bg-rose-900/40 border-rose-700 text-rose-300' : 'bg-slate-700/50 border-slate-600 text-slate-400 hover:border-rose-700 hover:text-rose-400'}">
+              <i class="fa-solid fa-cloud-sun text-xs"></i> Tarde
+            </button>
+          </div>
+          ${absManha && absTarde ? `
+            <p class="text-xs text-rose-400 text-center mt-1.5 flex items-center justify-center gap-1">
+              <i class="fa-solid fa-circle-xmark"></i> Ausente o dia todo
+            </p>` : ''}
+        </div>
       </div>`;
   },
 

@@ -38,6 +38,18 @@ create table if not exists tb_aps_tasks (
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_start TEXT;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_end TEXT;
 
+-- TB_APS_ABSENCES
+create table if not exists tb_aps_absences (
+  id         text primary key,
+  member_id  text references tb_aps_members(id) on delete cascade,
+  date       text not null,   -- 'YYYY-MM-DD'
+  shift      text not null    -- 'manha' | 'tarde' | 'dia_todo'
+);
+
+alter table tb_aps_absences enable row level security;
+create policy "anon read tb_aps_absences"    on tb_aps_absences for select using (true);
+create policy "admin manage tb_aps_absences" on tb_aps_absences for all    using (auth.role() = 'authenticated');
+
 -- AUTO-UPDATE updated_at
 create or replace function update_updated_at()
 returns trigger as $$
