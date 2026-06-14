@@ -107,6 +107,92 @@ export const HistoryCtrl = {
     this._renderTable(items, resultsEl);
   },
 
+  _renderStats(items) {
+    const total   = items.length;
+    const done    = items.filter(t => t.status === 'done').length;
+    const pending = total - done;
+    const rate    = Math.round((done / total) * 100);
+
+    const byType = {};
+    for (const t of items) {
+      if (!byType[t.type]) byType[t.type] = { done: 0, total: 0 };
+      byType[t.type].total++;
+      if (t.status === 'done') byType[t.type].done++;
+    }
+    const typeOrder   = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao'];
+    const typeEntries = typeOrder.filter(k => byType[k]).map(k => [k, byType[k]]);
+
+    const byMember = {};
+    for (const t of items) {
+      const name = t.members?.name || '—';
+      if (!byMember[name]) byMember[name] = { done: 0, total: 0 };
+      byMember[name].total++;
+      if (t.status === 'done') byMember[name].done++;
+    }
+    const memberEntries = Object.entries(byMember)
+      .sort((a, b) => (b[1].done / b[1].total) - (a[1].done / a[1].total));
+
+    return `
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4">
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Resumo</p>
+
+        <div class="grid grid-cols-3 gap-3 mb-5">
+          <div class="bg-slate-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-white">${total}</p>
+            <p class="text-xs text-slate-400 mt-0.5">registro${total !== 1 ? 's' : ''}</p>
+          </div>
+          <div class="bg-emerald-900/30 border border-emerald-800/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-emerald-400">${done}</p>
+            <p class="text-xs text-slate-400 mt-0.5">concluída${done !== 1 ? 's' : ''} (${rate}%)</p>
+          </div>
+          <div class="bg-slate-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-slate-300">${pending}</p>
+            <p class="text-xs text-slate-400 mt-0.5">pendente${pending !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 ${memberEntries.length > 1 ? 'lg:grid-cols-2' : ''} gap-5">
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5">Por tipo</p>
+            <div class="flex flex-col gap-2.5">
+              ${typeEntries.map(([type, data]) => {
+                const r = Math.round((data.done / data.total) * 100);
+                return `
+                  <div>
+                    <div class="flex justify-between text-xs mb-1">
+                      <span class="text-slate-400">${TYPE_LABEL[type] || type}</span>
+                      <span class="text-slate-500">${data.done}/${data.total} · ${r}%</span>
+                    </div>
+                    <div class="w-full bg-slate-700 rounded-full h-1.5">
+                      <div class="bg-primary rounded-full h-1.5 transition-all" style="width:${r}%"></div>
+                    </div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>
+          ${memberEntries.length > 1 ? `
+          <div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5">Por funcionário</p>
+            <div class="flex flex-col gap-2.5">
+              ${memberEntries.map(([name, data]) => {
+                const r = Math.round((data.done / data.total) * 100);
+                return `
+                  <div>
+                    <div class="flex justify-between text-xs mb-1">
+                      <span class="text-slate-400 truncate">${name}</span>
+                      <span class="text-slate-500 shrink-0 ml-2">${data.done}/${data.total} · ${r}%</span>
+                    </div>
+                    <div class="w-full bg-slate-700 rounded-full h-1.5">
+                      <div class="bg-accent rounded-full h-1.5 transition-all" style="width:${r}%"></div>
+                    </div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>` : ''}
+        </div>
+      </div>`;
+  },
+
   _renderTable(items, container) {
     if (items.length === 0) {
       container.innerHTML = `<div class="text-center py-12 text-slate-500">
@@ -116,6 +202,7 @@ export const HistoryCtrl = {
     }
 
     container.innerHTML = `
+      ${this._renderStats(items)}
       <p class="text-sm text-slate-400 mb-3">${items.length} registro${items.length !== 1 ? 's' : ''} encontrado${items.length !== 1 ? 's' : ''}</p>
       <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
         <table class="w-full text-sm">

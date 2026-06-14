@@ -250,7 +250,7 @@ export const CalendarCtrl = {
 
     const { data: demands } = await db
       .from('tb_aps_tasks')
-      .select('id, title, demand_category')
+      .select('id, title, demand_category, priority')
       .is('member_id', null)
       .order('demand_category')
       .order('updated_at', { ascending: false });
@@ -489,6 +489,34 @@ export const CalendarCtrl = {
       </div>`;
   },
 
+  _demandSection(label, icon, color, items) {
+    if (items.length === 0) return '';
+    const sorted = [...items].sort((a, b) => {
+      if (a.priority === b.priority) return 0;
+      return a.priority === 'principal' ? -1 : 1;
+    });
+    return `
+      <div class="mb-2">
+        <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1.5">
+          <i class="fa-solid ${icon} ${color}"></i>${label}
+        </p>
+        <div class="flex flex-col gap-1">
+          ${sorted.map(d => {
+            const isHigh = d.priority === 'principal';
+            return `
+            <button type="button" data-demand-id="${d.id}" onclick="CalendarCtrl.selectDemand('${d.id}')"
+              class="text-left px-3 py-2 rounded-lg text-sm transition-colors border
+                     ${isHigh ? 'text-white' : 'text-slate-300'} border-slate-600 hover:border-primary hover:text-white hover:bg-slate-700/50">
+              <span class="flex items-center gap-2">
+                ${isHigh ? '<i class="fa-solid fa-star text-amber-400 text-[10px] shrink-0"></i>' : '<i class="fa-regular fa-star text-slate-600 text-[10px] shrink-0"></i>'}
+                <span class="truncate">${d.title}</span>
+              </span>
+            </button>`;
+          }).join('')}
+        </div>
+      </div>`;
+  },
+
   _demandListHTML() {
     const { _demands } = this;
     if (_demands.length === 0) {
@@ -497,54 +525,25 @@ export const CalendarCtrl = {
     const reprimidas = _demands.filter(d => d.demand_category === 'reprimida');
     const estudos    = _demands.filter(d => d.demand_category === 'estudo');
 
-    const section = (label, icon, color, items) => items.length === 0 ? '' : `
-      <div class="mb-2">
-        <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1.5">
-          <i class="fa-solid ${icon} ${color}"></i>${label}
-        </p>
-        <div class="flex flex-col gap-1">
-          ${items.map(d => `
-            <button type="button" data-demand-id="${d.id}" onclick="CalendarCtrl.selectDemand('${d.id}')"
-              class="text-left px-3 py-2 rounded-lg text-sm transition-colors border
-                     text-slate-300 border-slate-600 hover:border-primary hover:text-white hover:bg-slate-700/50">
-              ${d.title}
-            </button>`).join('')}
-        </div>
-      </div>`;
-
     return `
       <input type="text" placeholder="Filtrar demandas…" oninput="CalendarCtrl.filterDemands(this.value)"
         class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
                placeholder-slate-500 focus:outline-none focus:border-primary transition-colors mb-2">
       <div id="demand-list" class="max-h-48 overflow-y-auto pr-1">
-        ${section('Demandas Reprimidas', 'fa-triangle-exclamation', 'text-rose-400', reprimidas)}
-        ${section('Temas de Estudo', 'fa-book-open', 'text-blue-400', estudos)}
+        ${this._demandSection('Demandas Reprimidas', 'fa-triangle-exclamation', 'text-rose-400', reprimidas)}
+        ${this._demandSection('Temas de Estudo', 'fa-book-open', 'text-blue-400', estudos)}
       </div>`;
   },
 
   filterDemands(value) {
-    const q = value.trim().toLowerCase();
+    const q        = value.trim().toLowerCase();
     const filtered = q ? this._demands.filter(d => d.title.toLowerCase().includes(q)) : this._demands;
     const reprimidas = filtered.filter(d => d.demand_category === 'reprimida');
     const estudos    = filtered.filter(d => d.demand_category === 'estudo');
-    const section = (label, icon, color, items) => items.length === 0 ? '' : `
-      <div class="mb-2">
-        <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1.5">
-          <i class="fa-solid ${icon} ${color}"></i>${label}
-        </p>
-        <div class="flex flex-col gap-1">
-          ${items.map(d => `
-            <button type="button" data-demand-id="${d.id}" onclick="CalendarCtrl.selectDemand('${d.id}')"
-              class="text-left px-3 py-2 rounded-lg text-sm transition-colors border
-                     text-slate-300 border-slate-600 hover:border-primary hover:text-white hover:bg-slate-700/50">
-              ${d.title}
-            </button>`).join('')}
-        </div>
-      </div>`;
     const list = document.getElementById('demand-list');
     if (list) list.innerHTML =
-      (section('Demandas Reprimidas', 'fa-triangle-exclamation', 'text-rose-400', reprimidas) +
-       section('Temas de Estudo', 'fa-book-open', 'text-blue-400', estudos)) ||
+      (this._demandSection('Demandas Reprimidas', 'fa-triangle-exclamation', 'text-rose-400', reprimidas) +
+       this._demandSection('Temas de Estudo', 'fa-book-open', 'text-blue-400', estudos)) ||
       `<p class="text-slate-500 text-sm text-center py-3">Nenhum resultado.</p>`;
   },
 
@@ -571,6 +570,10 @@ export const CalendarCtrl = {
     const form = document.getElementById('bank-assign-form');
     form.classList.remove('hidden');
     document.getElementById('bank-selected-title').textContent = demand?.title || '';
+    if (demand?.priority) {
+      const sel = document.getElementById('bank-cal-priority');
+      if (sel) sel.value = demand.priority;
+    }
   },
 
   onTypeChange(prefix = '') {

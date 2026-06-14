@@ -50,6 +50,14 @@ const RELEASES = [
             name: 'Finalizar tarefas no Cronograma',
             desc: 'Tarefas podem ser marcadas como concluídas ou pendentes diretamente nas células do calendário semanal, sem precisar navegar para outra tela. O toggle também está disponível dentro do modal de detalhes da célula.',
           },
+          {
+            name: 'Resumo no Histórico',
+            desc: 'Após cada busca no Histórico e Auditoria, um painel de resumo é exibido acima dos resultados com total de registros, concluídas e pendentes (com percentual), barras de conclusão por tipo de tarefa e, quando há mais de um funcionário nos resultados, barras comparativas por funcionário.',
+          },
+          {
+            name: 'Prioridade no Banco de Demandas',
+            desc: 'Demandas reprimidas e temas de estudo podem ser marcados como alta prioridade via estrela ou checkbox no momento da criação. Itens de alta prioridade aparecem no topo de cada lista com destaque visual. A prioridade pode ser alterada a qualquer momento clicando na estrela do item. Ao atribuir uma demanda do banco no Cronograma, a lista exibe a estrela de prioridade de cada item e pré-preenche o campo Prioridade do formulário com o valor da demanda selecionada.',
+          },
         ],
       },
     ],
