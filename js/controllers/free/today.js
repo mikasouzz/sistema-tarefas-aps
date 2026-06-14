@@ -36,8 +36,8 @@ export const TodayCtrl = {
       </div>`;
     const today = todayStr();
     const { data, error } = await db
-      .from('tasks_iss')
-      .select('*, members(name)')
+      .from('tb_aps_tasks')
+      .select('*, tb_aps_members(name)')
       .eq('scheduled_date', today)
       .not('member_id', 'is', null);
     if (error) { window.Toast.show('Erro ao carregar tarefas.', 'error'); return; }
@@ -223,7 +223,7 @@ export const TodayCtrl = {
 
   async toggleStatus(id, current) {
     const next = current === 'done' ? 'pending' : 'done';
-    const { error } = await db.from('tasks_iss').update({ status: next }).eq('id', id);
+    const { error } = await db.from('tb_aps_tasks').update({ status: next }).eq('id', id);
     if (error) { window.Toast.show('Erro ao atualizar.', 'error'); return; }
     const task = this.tasks.find(t => t.id === id);
     if (task) task.status = next;

@@ -10,7 +10,7 @@ export const FreeDemandsCtrl = {
         <i class="fa-solid fa-spinner fa-spin"></i> Carregando…
       </div>`;
     const { data, error } = await db
-      .from('tasks_iss')
+      .from('tb_aps_tasks')
       .select('id, title, demand_category, updated_at')
       .is('member_id', null)
       .order('updated_at', { ascending: false });

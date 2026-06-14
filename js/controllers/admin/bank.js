@@ -17,11 +17,11 @@ export const BankCtrl = {
 
   async _load() {
     const [itemsRes, assignRes] = await Promise.all([
-      db.from('tasks_iss')
+      db.from('tb_aps_tasks')
         .select('id, title, demand_category, updated_at')
         .is('member_id', null)
         .order('updated_at', { ascending: false }),
-      db.from('tasks_iss')
+      db.from('tb_aps_tasks')
         .select('demand_id')
         .not('demand_id', 'is', null),
     ]);
@@ -120,7 +120,7 @@ export const BankCtrl = {
     if (!title) return;
 
     const id = window.App.generateId();
-    const { error } = await db.from('tasks_iss').insert({ id, title, demand_category: category, status: 'pending' });
+    const { error } = await db.from('tb_aps_tasks').insert({ id, title, demand_category: category, status: 'pending' });
     if (error) { window.Toast.show('Erro ao adicionar.', 'error'); return; }
 
     this._items.unshift({ id, title, demand_category: category, updated_at: new Date().toISOString() });
@@ -137,7 +137,7 @@ export const BankCtrl = {
       );
       if (!confirmed) return;
     }
-    const { error } = await db.from('tasks_iss').delete().eq('id', id);
+    const { error } = await db.from('tb_aps_tasks').delete().eq('id', id);
     if (error) { window.Toast.show('Erro ao excluir.', 'error'); return; }
     this._items = this._items.filter(i => i.id !== id);
     delete this._countMap[id];

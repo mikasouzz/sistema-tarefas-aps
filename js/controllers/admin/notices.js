@@ -104,7 +104,7 @@ export const NoticesCtrl = {
       content,
       pinned,
     };
-    const { error } = await db.from('notices').insert(row);
+    const { error } = await db.from('tb_aps_notices').insert(row);
     if (error) { window.Toast.show('Erro ao publicar aviso.', 'error'); return; }
 
     setAppState({ notices: [row, ...AppState.notices] });
@@ -163,7 +163,7 @@ export const NoticesCtrl = {
     const content = document.getElementById('ne-content').value.trim();
     const pinned  = document.getElementById('ne-pinned').checked;
 
-    const { error } = await db.from('notices').update({ title, content, pinned }).eq('id', id);
+    const { error } = await db.from('tb_aps_notices').update({ title, content, pinned }).eq('id', id);
     if (error) { window.Toast.show('Erro ao salvar.', 'error'); return; }
 
     setAppState({ notices: AppState.notices.map(n => n.id === id ? { ...n, title, content, pinned } : n) });
@@ -173,7 +173,7 @@ export const NoticesCtrl = {
   },
 
   async delete(id) {
-    const { error } = await db.from('notices').delete().eq('id', id);
+    const { error } = await db.from('tb_aps_notices').delete().eq('id', id);
     if (error) { window.Toast.show('Erro ao excluir.', 'error'); return; }
 
     setAppState({ notices: AppState.notices.filter(n => n.id !== id) });

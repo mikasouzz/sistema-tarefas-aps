@@ -89,8 +89,8 @@ export const HistoryCtrl = {
     resultsEl.innerHTML = `<div class="flex items-center gap-2 text-slate-500 py-8 justify-center">
       <i class="fa-solid fa-spinner fa-spin"></i> Buscando…</div>`;
 
-    let q = db.from('tasks_iss')
-      .select('*, members(name)')
+    let q = db.from('tb_aps_tasks')
+      .select('*, tb_aps_members(name)')
       .not('member_id', 'is', null)
       .order('scheduled_date', { ascending: false });
 

@@ -88,8 +88,8 @@ export const BackupCtrl = {
 
     try {
       const [mRes, tRes] = await Promise.all([
-        db.from('members').select('*').order('name'),
-        db.from('tasks_iss').select('*').order('updated_at'),
+        db.from('tb_aps_members').select('*').order('name'),
+        db.from('tb_aps_tasks').select('*').order('updated_at'),
       ]);
       if (mRes.error) throw new Error(mRes.error.message);
       if (tRes.error) throw new Error(tRes.error.message);
@@ -98,7 +98,7 @@ export const BackupCtrl = {
         version:     1,
         exported_at: new Date().toISOString(),
         members:     mRes.data || [],
-        tasks_iss:   tRes.data || [],
+        tasks:       tRes.data || [],
       };
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -109,8 +109,8 @@ export const BackupCtrl = {
       }).click();
       URL.revokeObjectURL(url);
 
-      const total = payload.tasks_iss.length;
-      const demands = payload.tasks_iss.filter(t => !t.member_id).length;
+      const total = payload.tasks.length;
+      const demands = payload.tasks.filter(t => !t.member_id).length;
       window.Toast.show(`Exportado: ${payload.members.length} membros · ${total - demands} tarefas · ${demands} demandas`, 'success', 5000);
     } catch (e) {
       window.Toast.show(`Erro na exportação: ${e.message}`, 'error');
@@ -143,7 +143,7 @@ export const BackupCtrl = {
     const feedback = document.getElementById('backup-feedback');
 
     // Validação estrutural
-    if (!data.version || !Array.isArray(data.members) || !Array.isArray(data.tasks_iss)) {
+    if (!data.version || !Array.isArray(data.members) || !Array.isArray(data.tasks)) {
       feedback.innerHTML = `
         <div class="flex items-center gap-3 bg-danger/10 border border-danger/30 rounded-xl p-4 text-danger text-sm">
           <i class="fa-solid fa-circle-xmark text-xl"></i>
@@ -153,8 +153,8 @@ export const BackupCtrl = {
     }
 
     const members  = data.members;
-    const demands  = data.tasks_iss.filter(t => !t.member_id);
-    const tasks    = data.tasks_iss.filter(t => !!t.member_id);
+    const demands  = data.tasks.filter(t => !t.member_id);
+    const tasks    = data.tasks.filter(t => !!t.member_id);
 
     // Validação de referências cruzadas
     const memberIds = new Set(members.map(m => m.id));
@@ -251,22 +251,22 @@ export const BackupCtrl = {
 
     try {
       // 1. Members
-      if (members.length) await upsertBatches('members', members);
+      if (members.length) await upsertBatches('tb_aps_members', members);
 
       // 2. Demandas (member_id IS NULL) — precisam existir antes das tasks com demand_id
-      if (demands.length) await upsertBatches('tasks_iss', demands);
+      if (demands.length) await upsertBatches('tb_aps_tasks', demands);
 
       // 3. Tarefas — limpa demand_id se a demanda referenciada não está no arquivo
       const safeTasks = tasks.map(t => ({
         ...t,
         demand_id: t.demand_id && demandIds.has(t.demand_id) ? t.demand_id : null,
       }));
-      if (safeTasks.length) await upsertBatches('tasks_iss', safeTasks);
+      if (safeTasks.length) await upsertBatches('tb_aps_tasks', safeTasks);
 
       // Recarrega AppState
       const [mRes, tRes] = await Promise.all([
-        db.from('members').select('*').order('name'),
-        db.from('tasks_iss').select('*, members(name, role)').not('member_id', 'is', null).order('scheduled_date'),
+        db.from('tb_aps_members').select('*').order('name'),
+        db.from('tb_aps_tasks').select('*, tb_aps_members(name, role)').not('member_id', 'is', null).order('scheduled_date'),
       ]);
       setAppState({ members: mRes.data || [], tasks: tRes.data || [] });
 

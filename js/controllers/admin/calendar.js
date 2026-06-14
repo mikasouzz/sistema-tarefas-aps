@@ -168,7 +168,7 @@ export const CalendarCtrl = {
     const dayName = DAY_NAMES[new Date(dateStr + 'T12:00:00').getDay() - 1] || '';
 
     const { data: demands } = await db
-      .from('tasks_iss')
+      .from('tb_aps_tasks')
       .select('id, title, demand_category')
       .is('member_id', null)
       .order('demand_category')
@@ -529,11 +529,11 @@ export const CalendarCtrl = {
       demand_id:      demandId || null,
       status:         'pending',
     };
-    const { error } = await db.from('tasks_iss').insert(row);
+    const { error } = await db.from('tb_aps_tasks').insert(row);
     if (error) { window.Toast.show('Erro ao salvar tarefa.', 'error'); return; }
 
-    const { data } = await db.from('tasks_iss')
-      .select('*, members(name, role)')
+    const { data } = await db.from('tb_aps_tasks')
+      .select('*, tb_aps_members(name, role)')
       .not('member_id', 'is', null)
       .order('scheduled_date');
     setAppState({ tasks: data || [] });
@@ -550,7 +550,7 @@ export const CalendarCtrl = {
     if ((type === 'treinamento' || type === 'reuniao') && !time) {
       window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
     }
-    const { error } = await db.from('tasks_iss')
+    const { error } = await db.from('tb_aps_tasks')
       .update({ title, priority, shift, type, event_time: time || null })
       .eq('id', taskId);
     if (error) { window.Toast.show('Erro ao salvar.', 'error'); return; }
@@ -564,7 +564,7 @@ export const CalendarCtrl = {
   },
 
   async deleteTask(taskId) {
-    const { error } = await db.from('tasks_iss').delete().eq('id', taskId);
+    const { error } = await db.from('tb_aps_tasks').delete().eq('id', taskId);
     if (error) { window.Toast.show('Erro ao excluir.', 'error'); return; }
     setAppState({ tasks: AppState.tasks.filter(t => t.id !== taskId) });
     this._render();

@@ -152,16 +152,16 @@ export const TeamCtrl = {
 
     let error;
     if (id) {
-      ({ error } = await db.from('members').update({ name, role, regime }).eq('id', id));
+      ({ error } = await db.from('tb_aps_members').update({ name, role, regime }).eq('id', id));
     } else {
       const newId = window.App.generateId();
-      ({ error } = await db.from('members').insert({ id: newId, name, role, regime, active: true }));
+      ({ error } = await db.from('tb_aps_members').insert({ id: newId, name, role, regime, active: true }));
     }
 
     if (error) { window.Toast.show('Erro ao salvar.', 'error'); return; }
 
     // Reload members
-    const { data } = await db.from('members').select('*').order('name');
+    const { data } = await db.from('tb_aps_members').select('*').order('name');
     setAppState({ members: data || [] });
     this.closeForm();
     this._render();
@@ -169,9 +169,9 @@ export const TeamCtrl = {
   },
 
   async toggleActive(id, current) {
-    const { error } = await db.from('members').update({ active: !current }).eq('id', id);
+    const { error } = await db.from('tb_aps_members').update({ active: !current }).eq('id', id);
     if (error) { window.Toast.show('Erro ao atualizar.', 'error'); return; }
-    const { data } = await db.from('members').select('*').order('name');
+    const { data } = await db.from('tb_aps_members').select('*').order('name');
     setAppState({ members: data || [] });
     this._render();
     window.Toast.show(!current ? 'Membro reativado.' : 'Membro inativado.', 'info');
