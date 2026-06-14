@@ -68,11 +68,19 @@ export const TeamCtrl = {
                         <span class="text-xs px-2 py-0.5 rounded-full ${m.active ? 'bg-emerald-900/40 border border-emerald-700 text-emerald-300' : 'bg-slate-700 text-slate-400'}">
                           ${m.active ? 'Ativo' : 'Inativo'}
                         </span>
-                        ${m.on_vacation ? `
-                          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 border border-amber-700 text-amber-300 flex items-center gap-1">
-                            <i class="fa-solid fa-umbrella-beach text-[10px]"></i>
-                            Férias${m.vacation_start && m.vacation_end ? ` ${fmtDate(m.vacation_start)}–${fmtDate(m.vacation_end)}` : ''}
-                          </span>` : ''}
+                        ${m.on_vacation ? (() => {
+                            const expired = m.vacation_end && m.vacation_end < new Date().toISOString().slice(0, 10);
+                            return expired
+                              ? `<span class="text-xs px-2 py-0.5 rounded-full bg-orange-900/40 border border-orange-600 text-orange-300 flex items-center gap-1"
+                                   title="Período encerrado — atualize a situação do membro">
+                                   <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                                   Férias encerradas
+                                 </span>`
+                              : `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 border border-amber-700 text-amber-300 flex items-center gap-1">
+                                   <i class="fa-solid fa-umbrella-beach text-[10px]"></i>
+                                   Férias${m.vacation_start && m.vacation_end ? ` ${fmtDate(m.vacation_start)}–${fmtDate(m.vacation_end)}` : ''}
+                                 </span>`;
+                          })() : ''}
                       </div>
                     </td>
                     <td class="px-5 py-3.5">
