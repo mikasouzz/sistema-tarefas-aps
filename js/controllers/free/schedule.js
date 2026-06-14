@@ -233,10 +233,12 @@ export const ScheduleCtrl = {
           <form onsubmit="ScheduleCtrl._submitRequest(event,'${task.id}','${memberName}','${task.title.replace(/'/g, '&#39;')}')">
             <div class="mb-4">
               <label class="block text-sm text-slate-400 mb-1.5">Justificativa</label>
-              <textarea id="req-justification" required rows="4"
+              <textarea id="req-justification" required rows="4" maxlength="140"
+                oninput="document.getElementById('req-char-count').textContent = 140 - this.value.length"
                 placeholder="Descreva o motivo pelo qual a tarefa não pôde ser realizada…"
                 class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
                        focus:outline-none focus:border-primary transition-colors resize-none text-sm"></textarea>
+              <p class="text-xs text-slate-500 text-right mt-1"><span id="req-char-count">140</span> caracteres restantes</p>
             </div>
             <div class="flex gap-3">
               <button type="button" onclick="ScheduleCtrl._closeReqModal()"
