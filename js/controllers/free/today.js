@@ -245,6 +245,7 @@ export const TodayCtrl = {
               <i class="fa-solid fa-star text-sm"></i>
             </button>` : ''}
         </div>
+        ${!done ? `
         <div class="border-t border-slate-600/50 pt-2 flex justify-end">
           ${req
             ? `<span class="text-xs text-rose-400 flex items-center gap-1">
@@ -254,7 +255,7 @@ export const TodayCtrl = {
                  class="text-xs text-slate-500 hover:text-rose-400 flex items-center gap-1 transition-colors">
                  <i class="fa-solid fa-circle-xmark text-[10px]"></i> Solicitar remoção
                </button>`}
-        </div>
+        </div>` : ''}
       </div>`;
   },
 

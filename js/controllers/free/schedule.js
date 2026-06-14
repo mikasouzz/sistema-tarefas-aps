@@ -189,6 +189,7 @@ export const ScheduleCtrl = {
             <i class="fa-solid fa-star"></i>
           </button>` : ''}
         ${done ? '<span class="mt-1 block text-accent"><i class="fa-solid fa-circle-check text-xs"></i> Concluída</span>' : ''}
+        ${!done ? `
         <div class="border-t border-slate-600/50 mt-2 pt-1.5 flex justify-end">
           ${req
             ? `<span class="text-rose-400 flex items-center gap-0.5">
@@ -198,7 +199,7 @@ export const ScheduleCtrl = {
                  class="text-slate-500 hover:text-rose-400 flex items-center gap-0.5 transition-colors">
                  <i class="fa-solid fa-circle-xmark text-[9px]"></i> Solicitar remoção
                </button>`}
-        </div>
+        </div>` : ''}
       </div>`;
   },
 
