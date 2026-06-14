@@ -119,6 +119,8 @@ export const ScheduleCtrl = {
       const isToday  = dateStr === today;
       const absence  = AppState.absences?.find(a => a.member_id === memberId && a.date === dateStr);
       const absDay   = absence?.shift === 'dia_todo';
+      const onVacation = member.on_vacation && member.vacation_start && member.vacation_end
+        && dateStr >= member.vacation_start && dateStr <= member.vacation_end;
       const SHIFT_ORDER = { manha: 0, tarde: 1, livre: 2 };
       const dayTasks = memberTasks
         .filter(t => t.scheduled_date === dateStr)
@@ -136,12 +138,17 @@ export const ScheduleCtrl = {
             <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
             <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtShort(day)}</p>
           </div>
-          ${absence ? `
+          ${onVacation ? `
+            <div class="flex items-center justify-center gap-1 bg-amber-900/20 border border-amber-700/40 rounded-lg px-2 py-1.5">
+              <i class="fa-solid fa-umbrella-beach text-amber-400 text-[10px]"></i>
+              <span class="text-[10px] font-semibold text-amber-400 uppercase tracking-wide">Férias</span>
+            </div>` : ''}
+          ${!onVacation && absence ? `
             <div class="flex items-center justify-center gap-1 bg-rose-900/20 border border-rose-700/40 rounded-lg px-2 py-1.5">
               <i class="fa-solid fa-user-slash text-rose-400 text-[10px]"></i>
               <span class="text-[10px] font-semibold text-rose-400 uppercase tracking-wide">Ausente · ${ABSENCE_LABEL[absence.shift]}</span>
             </div>` : ''}
-          ${absDay
+          ${onVacation || absDay
             ? '<p class="text-slate-600 text-xs text-center py-1">—</p>'
             : dayTasks.length === 0
               ? '<p class="text-slate-600 text-xs text-center py-2">—</p>'
@@ -152,7 +159,14 @@ export const ScheduleCtrl = {
     return `
       <div class="p-4 border-b border-slate-700 shrink-0 flex items-center justify-between">
         <div>
-          <p class="font-semibold text-white">${member?.name || ''}</p>
+          <div class="flex items-center gap-2">
+            <p class="font-semibold text-white">${member?.name || ''}</p>
+            ${member.on_vacation && member.vacation_start && member.vacation_end
+              && member.vacation_end >= weekStart && member.vacation_start <= weekEnd ? `
+              <span class="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 border border-amber-700 text-amber-300 flex items-center gap-1">
+                <i class="fa-solid fa-umbrella-beach text-[10px]"></i> Férias
+              </span>` : ''}
+          </div>
           <p class="text-slate-400 text-xs mt-0.5">
             ${fmtShort(weekDays[0])} — ${fmtShort(weekDays[4])} ·
             ${memberTasks.length} tarefa${memberTasks.length !== 1 ? 's' : ''}
