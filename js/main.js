@@ -11,6 +11,7 @@ import './controllers/free/demands.js';
 import './controllers/free/ranking.js';
 
 // Admin view controllers
+import './controllers/admin/dashboard.js';
 import './controllers/admin/team.js';
 import './controllers/admin/calendar.js';
 import './controllers/admin/history.js';

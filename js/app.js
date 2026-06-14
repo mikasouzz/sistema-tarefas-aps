@@ -77,6 +77,7 @@ export const App = {
       if (tab === 'ranking')  window.RankingCtrl.init(content);
     }
     if (view === 'admin') {
+      if (tab === 'dashboard') window.AdminDashCtrl.init(content);
       if (tab === 'calendar') window.CalendarCtrl.init(content);
       if (tab === 'team')     window.TeamCtrl.init(content);
       if (tab === 'history')  window.HistoryCtrl.init(content);
@@ -134,6 +135,7 @@ export const App = {
             <span class="mt-1 inline-block bg-violet-700 text-violet-100 text-xs px-2 py-0.5 rounded-full font-medium">Supervisão</span>
           </div>
           <nav class="flex-1 p-2 flex flex-col gap-0.5 overflow-y-auto">
+            ${btn('dashboard', 'fa-gauge',             'Visão Geral')}
             ${btn('calendar', 'fa-calendar-alt',      'Cronograma')}
             ${btn('team',     'fa-users',             'Equipe')}
             ${btn('history',  'fa-clock-rotate-left', 'Histórico')}

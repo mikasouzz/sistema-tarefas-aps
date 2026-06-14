@@ -3,7 +3,7 @@ import { getMondayOf } from './utils/date.js';
 export let AppState = {
   view: 'home',          // 'home' | 'free' | 'admin'
   freeTab:  'today',     // 'today' | 'schedule' | 'demands'
-  adminTab: 'calendar',  // 'calendar' | 'team' | 'history' | 'bank'
+  adminTab: 'dashboard', // 'dashboard' | 'calendar' | 'team' | 'history' | 'bank'
   members: [],
   tasks: [],             // tarefas alocadas (member_id NOT NULL)
   notices: [],
