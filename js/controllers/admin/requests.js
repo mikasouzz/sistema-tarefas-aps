@@ -32,15 +32,35 @@ export const RequestsCtrl = {
   },
 
   _card(r) {
-    const date = new Date(r.created_at).toLocaleString('pt-BR', {
+    const sentAt = new Date(r.created_at).toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
     });
+    const task = AppState.tasks.find(t => t.id === r.task_id);
+    const SHIFT_LABEL    = { manha: 'Manhã', tarde: 'Tarde', livre: 'Livre' };
+    const TYPE_LABEL     = { operacional: 'Operacional', analitica: 'Analítica', estrategia: 'Estratégia', treinamento: 'Treinamento', reuniao: 'Reunião' };
+    const PRIORITY_LABEL = { principal: 'Principal', secundaria: 'Secundária' };
+
+    const fmtDate = str => {
+      if (!str) return '—';
+      const [, m, d] = str.split('-');
+      return `${d}/${m}`;
+    };
+
+    const taskMeta = task ? `
+      <div class="flex flex-wrap gap-1.5 mt-2">
+        ${task.scheduled_date ? `<span class="text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-400"><i class="fa-solid fa-calendar text-[9px] mr-1"></i>${fmtDate(task.scheduled_date)}</span>` : ''}
+        ${task.shift        ? `<span class="text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-400">${SHIFT_LABEL[task.shift] || task.shift}</span>` : ''}
+        ${task.type         ? `<span class="text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-400">${TYPE_LABEL[task.type] || task.type}</span>` : ''}
+        ${task.priority     ? `<span class="text-[11px] px-2 py-0.5 rounded ${task.priority === 'principal' ? 'bg-violet-900/40 text-violet-300' : 'bg-slate-700 text-slate-400'}">${PRIORITY_LABEL[task.priority] || task.priority}</span>` : ''}
+      </div>` : '';
+
     return `
       <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col gap-3">
         <div class="flex items-start justify-between gap-4">
-          <div>
+          <div class="min-w-0">
             <p class="font-semibold text-white">${r.task_title}</p>
-            <p class="text-sm text-slate-400 mt-0.5">${r.member_name} · ${date}</p>
+            <p class="text-sm text-slate-400 mt-0.5">${r.member_name} · <span class="text-slate-500">solicitado em ${sentAt}</span></p>
+            ${taskMeta}
           </div>
           <span class="shrink-0 text-xs px-2 py-0.5 rounded-full bg-rose-900/40 border border-rose-700 text-rose-300 flex items-center gap-1">
             <i class="fa-solid fa-circle-xmark text-[10px]"></i> Pendente
