@@ -52,12 +52,12 @@ create policy "admin manage tb_aps_absences" on tb_aps_absences for all    using
 
 -- TB_APS_TASK_REQUESTS
 create table if not exists tb_aps_task_requests (
-  id           text primary key,
-  task_id      text references tb_aps_tasks(id) on delete cascade,
-  task_title   text not null,
-  member_name  text not null,
+  id            text primary key,
+  task_id       text unique references tb_aps_tasks(id) on delete cascade,
+  task_title    text not null,
+  member_name   text not null,
   justification text not null,
-  created_at   timestamptz default now()
+  created_at    timestamptz default now()
 );
 
 alter table tb_aps_task_requests enable row level security;
