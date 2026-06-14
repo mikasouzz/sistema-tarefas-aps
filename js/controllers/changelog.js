@@ -2,6 +2,59 @@ import { VERSION } from '../app.js';
 
 const RELEASES = [
   {
+    version: 'v1.1',
+    date: 'Junho 2026',
+    label: 'Gestão da equipe',
+    sections: [
+      {
+        title: 'Acesso Sistema',
+        icon: 'fa-eye',
+        color: 'text-accent',
+        items: [
+          {
+            name: 'Solicitação de remoção de tarefa',
+            desc: 'Membros podem solicitar a remoção de uma tarefa pendente informando uma justificativa (até 140 caracteres). A tarefa fica marcada como "Aguardando supervisão" até a resposta. Disponível nas views Tarefas do Dia e Cronograma.',
+          },
+          {
+            name: 'Indicador de ausência no Cronograma',
+            desc: 'Dias com ausência registrada exibem badge com o turno (Manhã, Tarde ou Dia todo) na coluna correspondente. Em dia todo, as tarefas ficam ocultas.',
+          },
+          {
+            name: 'Indicador de férias no Cronograma',
+            desc: 'Dias dentro do período de férias do membro exibem badge âmbar "Férias" na coluna, com tarefas ocultas. O cabeçalho também exibe o badge quando a semana selecionada cobre o período.',
+          },
+        ],
+      },
+      {
+        title: 'Acesso Supervisão',
+        icon: 'fa-lock',
+        color: 'text-primary',
+        items: [
+          {
+            name: 'Visão Geral (dashboard)',
+            desc: 'Nova tela inicial do painel de supervisão. Exibe em tempo real: progresso de tarefas do dia, membros sem tarefas, ausentes, férias ativas e encerradas, tarefas pendentes de dias anteriores e próximas reuniões e treinamentos dos próximos 7 dias.',
+          },
+          {
+            name: 'Solicitações',
+            desc: 'Nova aba para gerenciar pedidos de remoção enviados pela equipe. Exibe título, membro, data da solicitação, detalhes da tarefa (data agendada, turno, tipo, prioridade) e justificativa. Aceitar remove a tarefa; recusar descarta apenas a solicitação.',
+          },
+          {
+            name: 'Férias na Equipe',
+            desc: 'Cadastro de período de férias por membro. Exibe badge no campo Situação com as datas. Quando o período encerra, o badge muda para alerta laranja indicando que a supervisão deve atualizar o registro.',
+          },
+          {
+            name: 'Ausências no Cronograma',
+            desc: 'Células do calendário permitem registrar ausência diária por turno (Manhã, Tarde ou Dia todo) via modal. Dias de ausência ficam com tinta rosada; dias de férias bloqueados com tinta âmbar.',
+          },
+          {
+            name: 'Finalizar tarefas no Cronograma',
+            desc: 'Tarefas podem ser marcadas como concluídas ou pendentes diretamente nas células do calendário semanal, sem precisar navegar para outra tela. O toggle também está disponível dentro do modal de detalhes da célula.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: 'v1.0',
     date: 'Junho 2026',
     label: 'Lançamento inicial',

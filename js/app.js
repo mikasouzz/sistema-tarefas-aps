@@ -1,7 +1,7 @@
 import { db } from './db.js';
 import { AppState, setAppState } from './state.js';
 
-export const VERSION = 'v1.0';
+export const VERSION = 'v1.1';
 
 export const App = {
   generateId() {
