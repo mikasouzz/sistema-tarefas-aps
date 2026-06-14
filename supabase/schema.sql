@@ -80,6 +80,33 @@ create trigger members_updated_at before update on tb_aps_members
 create trigger tasks_iss_updated_at before update on tb_aps_tasks
   for each row execute function update_updated_at();
 
+-- TB_APS_NOTICES
+create table if not exists tb_aps_notices (
+  id         text primary key,
+  title      text not null,
+  content    text not null,
+  pinned     boolean default false,
+  created_at timestamptz default now()
+);
+
+alter table tb_aps_notices enable row level security;
+create policy "anon read tb_aps_notices"    on tb_aps_notices for select using (true);
+create policy "admin manage tb_aps_notices" on tb_aps_notices for all    using (auth.role() = 'authenticated');
+
+-- GRANTS
+grant select          on public.tb_aps_notices        to anon;
+grant all             on public.tb_aps_notices        to authenticated;
+
+grant select          on public.tb_aps_members       to anon;
+grant select, update  on public.tb_aps_tasks          to anon;
+grant select          on public.tb_aps_absences        to anon;
+grant select, insert  on public.tb_aps_task_requests   to anon;
+
+grant all on public.tb_aps_members       to authenticated;
+grant all on public.tb_aps_tasks          to authenticated;
+grant all on public.tb_aps_absences        to authenticated;
+grant all on public.tb_aps_task_requests   to authenticated;
+
 -- RLS
 alter table tb_aps_members enable row level security;
 alter table tb_aps_tasks enable row level security;
