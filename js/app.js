@@ -3,6 +3,11 @@ import { AppState, setAppState } from './state.js';
 
 export const VERSION = 'v1.1';
 
+const FREE_ROUTE  = { today: 'hoje', schedule: 'cronograma', demands: 'demandas', ranking: 'ranking' };
+const FREE_TAB    = Object.fromEntries(Object.entries(FREE_ROUTE).map(([k, v]) => [v, k]));
+const ADMIN_ROUTE = { dashboard: 'visao-geral', calendar: 'cronograma', team: 'equipe', history: 'historico', bank: 'banco', notices: 'avisos', requests: 'solicitacoes', backup: 'backup' };
+const ADMIN_TAB   = Object.fromEntries(Object.entries(ADMIN_ROUTE).map(([k, v]) => [v, k]));
+
 export const App = {
   generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -30,7 +35,7 @@ export const App = {
     });
   },
 
-  navigate(view, tab) {
+  navigate(view, tab, { updateHash = true } = {}) {
     const prevView = AppState.view;
     if (view === 'free'  && !tab) tab = AppState.freeTab;
     if (view === 'admin' && !tab) tab = AppState.adminTab;
@@ -39,6 +44,14 @@ export const App = {
     if (view === 'free'  && tab) setAppState({ freeTab: tab });
     if (view === 'admin' && tab) setAppState({ adminTab: tab });
 
+    if (updateHash) {
+      const hash = view === 'home'      ? ''
+                 : view === 'changelog' ? 'changelog'
+                 : view === 'free'      ? (FREE_ROUTE[tab]  || tab)
+                 :                        `supervisao/${ADMIN_ROUTE[tab] || tab}`;
+      if (location.hash !== '#' + hash) location.hash = hash;
+    }
+
     const shellChanged = prevView !== view;
     if (shellChanged || view === 'home' || view === 'changelog') {
       this._renderShell(view);
@@ -46,6 +59,17 @@ export const App = {
     if (view !== 'home' && view !== 'changelog') {
       this._renderTab(view, tab);
     }
+  },
+
+  _parseHash() {
+    const hash = location.hash.slice(1);
+    if (!hash || hash === '') return { view: null };
+    if (hash === 'changelog') return { view: 'changelog' };
+    if (hash.startsWith('supervisao/')) {
+      const slug = hash.slice('supervisao/'.length);
+      return { view: 'admin', tab: ADMIN_TAB[slug] || 'dashboard' };
+    }
+    return { view: 'free', tab: FREE_TAB[hash] || 'today' };
   },
 
   _renderShell(view) {
@@ -184,7 +208,16 @@ export const App = {
   async init() {
     const hasSession = await window.AuthCtrl.checkSession();
     await this.loadData();
-    this.navigate(hasSession ? 'admin' : 'home');
+
+    const { view, tab } = this._parseHash();
+    const target = (!hasSession && view === 'admin') ? 'home' : (view || (hasSession ? 'admin' : 'home'));
+    this.navigate(target, tab, { updateHash: false });
+
+    window.addEventListener('hashchange', () => {
+      const { view: v, tab: t } = App._parseHash();
+      if (v === 'admin' && !AppState.isAdmin) { App.navigate('home', null, { updateHash: false }); return; }
+      App.navigate(v || 'home', t, { updateHash: false });
+    });
   },
 };
 window.App = App;
