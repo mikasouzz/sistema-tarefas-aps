@@ -112,9 +112,13 @@ export const ScheduleCtrl = {
     );
     const today = todayStr();
 
+    const ABSENCE_LABEL = { manha: 'Manhã', tarde: 'Tarde', dia_todo: 'Dia todo' };
+
     const cols = weekDays.map((day, i) => {
       const dateStr  = toDateStr(day);
       const isToday  = dateStr === today;
+      const absence  = AppState.absences?.find(a => a.member_id === memberId && a.date === dateStr);
+      const absDay   = absence?.shift === 'dia_todo';
       const SHIFT_ORDER = { manha: 0, tarde: 1, livre: 2 };
       const dayTasks = memberTasks
         .filter(t => t.scheduled_date === dateStr)
@@ -132,9 +136,16 @@ export const ScheduleCtrl = {
             <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
             <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtShort(day)}</p>
           </div>
-          ${dayTasks.length === 0
-            ? '<p class="text-slate-600 text-xs text-center py-2">—</p>'
-            : dayTasks.map(t => this._miniCard(t)).join('')}
+          ${absence ? `
+            <div class="flex items-center justify-center gap-1 bg-rose-900/20 border border-rose-700/40 rounded-lg px-2 py-1.5">
+              <i class="fa-solid fa-user-slash text-rose-400 text-[10px]"></i>
+              <span class="text-[10px] font-semibold text-rose-400 uppercase tracking-wide">Ausente · ${ABSENCE_LABEL[absence.shift]}</span>
+            </div>` : ''}
+          ${absDay
+            ? '<p class="text-slate-600 text-xs text-center py-1">—</p>'
+            : dayTasks.length === 0
+              ? '<p class="text-slate-600 text-xs text-center py-2">—</p>'
+              : dayTasks.map(t => this._miniCard(t)).join('')}
         </div>`;
     }).join('');
 
