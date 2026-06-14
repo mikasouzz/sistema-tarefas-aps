@@ -90,7 +90,7 @@ export const HistoryCtrl = {
       <i class="fa-solid fa-spinner fa-spin"></i> Buscando…</div>`;
 
     let q = db.from('tb_aps_tasks')
-      .select('*, tb_aps_members(name)')
+      .select('*, member:tb_aps_members(name)')
       .not('member_id', 'is', null)
       .order('scheduled_date', { ascending: false });
 
@@ -124,7 +124,7 @@ export const HistoryCtrl = {
 
     const byMember = {};
     for (const t of items) {
-      const name = t.members?.name || '—';
+      const name = t.member?.name || '—';
       if (!byMember[name]) byMember[name] = { done: 0, total: 0 };
       byMember[name].total++;
       if (t.status === 'done') byMember[name].done++;
@@ -223,7 +223,7 @@ export const HistoryCtrl = {
               return `
                 <tr class="hover:bg-slate-700/30 transition-colors">
                   <td class="px-4 py-3 text-slate-300 whitespace-nowrap">${dateDisplay}</td>
-                  <td class="px-4 py-3 text-white font-medium">${t.members?.name || '—'}</td>
+                  <td class="px-4 py-3 text-white font-medium">${t.member?.name || '—'}</td>
                   <td class="px-4 py-3 text-slate-300">${t.title}</td>
                   <td class="px-4 py-3 text-slate-400 hidden sm:table-cell">${TYPE_LABEL[t.type] || t.type}</td>
                   <td class="px-4 py-3 text-slate-400 hidden md:table-cell">${SHIFT_LABEL[t.shift] || t.shift}</td>
@@ -246,7 +246,7 @@ export const HistoryCtrl = {
       const [y, mo, d] = (t.scheduled_date || '').split('-');
       return [
         t.scheduled_date ? `${d}/${mo}/${y}` : '',
-        t.members?.name  || '',
+        t.member?.name  || '',
         t.title,
         t.priority === 'principal' ? 'Principal' : 'Secundária',
         TYPE_LABEL[t.type]  || t.type  || '',
