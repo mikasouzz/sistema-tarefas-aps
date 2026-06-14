@@ -40,7 +40,7 @@ export const BackupCtrl = {
             <h3 class="font-semibold text-white mb-1">Exportar dados</h3>
             <p class="text-slate-400 text-sm leading-relaxed">
               Gera um arquivo <code class="bg-slate-700 px-1 rounded text-xs">.json</code> com
-              todos os membros, tarefas e demandas do banco.
+              todos os membros, tarefas, demandas, avisos, ausências e solicitações.
             </p>
           </div>
           <button onclick="BackupCtrl.exportJSON()"
@@ -87,18 +87,27 @@ export const BackupCtrl = {
     btn.disabled = true;
 
     try {
-      const [mRes, tRes] = await Promise.all([
+      const [mRes, tRes, nRes, aRes, rRes] = await Promise.all([
         db.from('tb_aps_members').select('*').order('name'),
         db.from('tb_aps_tasks').select('*').order('updated_at'),
+        db.from('tb_aps_notices').select('*').order('created_at'),
+        db.from('tb_aps_absences').select('*'),
+        db.from('tb_aps_task_requests').select('*').order('created_at'),
       ]);
       if (mRes.error) throw new Error(mRes.error.message);
       if (tRes.error) throw new Error(tRes.error.message);
+      if (nRes.error) throw new Error(nRes.error.message);
+      if (aRes.error) throw new Error(aRes.error.message);
+      if (rRes.error) throw new Error(rRes.error.message);
 
       const payload = {
         version:     1,
         exported_at: new Date().toISOString(),
         members:     mRes.data || [],
         tasks:       tRes.data || [],
+        notices:     nRes.data || [],
+        absences:    aRes.data || [],
+        requests:    rRes.data || [],
       };
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -111,7 +120,7 @@ export const BackupCtrl = {
 
       const total = payload.tasks.length;
       const demands = payload.tasks.filter(t => !t.member_id).length;
-      window.Toast.show(`Exportado: ${payload.members.length} membros · ${total - demands} tarefas · ${demands} demandas`, 'success', 5000);
+      window.Toast.show(`Exportado: ${payload.members.length} membros · ${total - demands} tarefas · ${demands} demandas · ${payload.notices.length} avisos · ${payload.absences.length} ausências · ${payload.requests.length} solicitações`, 'success', 6000);
     } catch (e) {
       window.Toast.show(`Erro na exportação: ${e.message}`, 'error');
     } finally {
@@ -143,7 +152,7 @@ export const BackupCtrl = {
     const feedback = document.getElementById('backup-feedback');
 
     // Validação estrutural
-    if (!data.version || !Array.isArray(data.members) || !Array.isArray(data.tasks)) {
+    if (!data.version || !Array.isArray(data.members) || !Array.isArray(data.tasks) || !Array.isArray(data.notices) || !Array.isArray(data.absences) || !Array.isArray(data.requests)) {
       feedback.innerHTML = `
         <div class="flex items-center gap-3 bg-danger/10 border border-danger/30 rounded-xl p-4 text-danger text-sm">
           <i class="fa-solid fa-circle-xmark text-xl"></i>
@@ -153,6 +162,9 @@ export const BackupCtrl = {
     }
 
     const members  = data.members;
+    const notices  = data.notices;
+    const absences = data.absences;
+    const requests = data.requests;
     const demands  = data.tasks.filter(t => !t.member_id);
     const tasks    = data.tasks.filter(t => !!t.member_id);
 
@@ -167,7 +179,7 @@ export const BackupCtrl = {
       ? new Date(data.exported_at).toLocaleString('pt-BR')
       : 'data desconhecida';
 
-    this._pendingData = { members, demands, tasks, memberIds, demandIds };
+    this._pendingData = { members, notices, absences, requests, demands, tasks, memberIds, demandIds };
 
     feedback.innerHTML = `
       <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col gap-4">
@@ -182,7 +194,10 @@ export const BackupCtrl = {
         <div class="grid grid-cols-3 gap-3">
           ${this._statCard('fa-users', 'text-violet-400', members.length, 'Membros')}
           ${this._statCard('fa-list-check', 'text-blue-400', tasks.length, 'Tarefas')}
-          ${this._statCard('fa-layer-group', 'text-amber-400', demands.length, 'Demandas no banco')}
+          ${this._statCard('fa-layer-group', 'text-amber-400', demands.length, 'Demandas')}
+          ${this._statCard('fa-bell', 'text-green-400', notices.length, 'Avisos')}
+          ${this._statCard('fa-calendar-xmark', 'text-rose-400', absences.length, 'Ausências')}
+          ${this._statCard('fa-inbox', 'text-sky-400', requests.length, 'Solicitações')}
         </div>
 
         ${orphanTasks.length > 0 ? `
@@ -243,7 +258,7 @@ export const BackupCtrl = {
 
   async confirmImport() {
     if (!this._pendingData) return;
-    const { members, demands, tasks, demandIds } = this._pendingData;
+    const { members, notices, absences, requests, demands, tasks, demandIds } = this._pendingData;
     const feedback = document.getElementById('backup-feedback');
     const btn = feedback.querySelector('button[onclick="BackupCtrl.confirmImport()"]');
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Importando…';
@@ -253,22 +268,40 @@ export const BackupCtrl = {
       // 1. Members
       if (members.length) await upsertBatches('tb_aps_members', members);
 
-      // 2. Demandas (member_id IS NULL) — precisam existir antes das tasks com demand_id
+      // 2. Notices
+      if (notices.length) await upsertBatches('tb_aps_notices', notices);
+
+      // 3. Demandas (member_id IS NULL) — precisam existir antes das tasks com demand_id
       if (demands.length) await upsertBatches('tb_aps_tasks', demands);
 
-      // 3. Tarefas — limpa demand_id se a demanda referenciada não está no arquivo
+      // 4. Tarefas — limpa demand_id se a demanda referenciada não está no arquivo
       const safeTasks = tasks.map(t => ({
         ...t,
         demand_id: t.demand_id && demandIds.has(t.demand_id) ? t.demand_id : null,
       }));
       if (safeTasks.length) await upsertBatches('tb_aps_tasks', safeTasks);
 
+      // 5. Ausências — dependem de members
+      if (absences.length) await upsertBatches('tb_aps_absences', absences);
+
+      // 6. Solicitações — dependem de tasks
+      if (requests.length) await upsertBatches('tb_aps_task_requests', requests);
+
       // Recarrega AppState
-      const [mRes, tRes] = await Promise.all([
+      const [mRes, tRes, nRes, aRes, rRes] = await Promise.all([
         db.from('tb_aps_members').select('*').order('name'),
         db.from('tb_aps_tasks').select('*, tb_aps_members(name, role)').not('member_id', 'is', null).order('scheduled_date'),
+        db.from('tb_aps_notices').select('*').order('created_at', { ascending: false }),
+        db.from('tb_aps_absences').select('*'),
+        db.from('tb_aps_task_requests').select('*').order('created_at'),
       ]);
-      setAppState({ members: mRes.data || [], tasks: tRes.data || [] });
+      setAppState({
+        members:  mRes.data || [],
+        tasks:    tRes.data || [],
+        notices:  nRes.data || [],
+        absences: aRes.data || [],
+        requests: rRes.data || [],
+      });
 
       this._pendingData = null;
       feedback.innerHTML = `
@@ -277,7 +310,10 @@ export const BackupCtrl = {
           <span>Importação concluída com sucesso!
             <strong>${members.length}</strong> membros ·
             <strong>${tasks.length}</strong> tarefas ·
-            <strong>${demands.length}</strong> demandas importadas.
+            <strong>${demands.length}</strong> demandas ·
+            <strong>${notices.length}</strong> avisos ·
+            <strong>${absences.length}</strong> ausências ·
+            <strong>${requests.length}</strong> solicitações importados.
           </span>
         </div>`;
       window.Toast.show('Backup importado com sucesso.', 'success');
