@@ -97,11 +97,17 @@ export const CalendarCtrl = {
           ${active.length === 0
             ? `<div class="col-span-6 py-12 text-center text-slate-500 text-sm">Nenhum membro ativo.</div>`
             : active.map(m => `
-                <div class="px-4 py-3 border-t border-r border-slate-700 bg-slate-800/60 sticky left-0 z-10 flex items-center">
-                  <span class="text-sm font-medium text-white truncate">${m.name}</span>
+                <div class="px-4 py-3 border-t border-r border-slate-700 bg-slate-800/60 sticky left-0 z-10 flex items-center gap-2">
+                  <span class="text-sm font-medium ${m.on_vacation ? 'text-slate-400' : 'text-white'} truncate">${m.name}</span>
+                  ${m.on_vacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-xs shrink-0" title="De férias"></i>' : ''}
                 </div>
                 ${weekDays.map(d => {
                   const dateStr  = toDateStr(d);
+                  const vacDay   = m.on_vacation && (
+                    !m.vacation_start || !m.vacation_end
+                      ? true
+                      : dateStr >= m.vacation_start && dateStr <= m.vacation_end
+                  );
                   const dayTasks = weekTasks
                     .filter(t => t.member_id === m.id && t.scheduled_date === dateStr)
                     .sort((a, b) => {
@@ -111,6 +117,12 @@ export const CalendarCtrl = {
                       if (a.priority !== 'principal' && b.priority === 'principal') return  1;
                       return 0;
                     });
+                  if (vacDay) return `
+                    <div class="border-t border-l border-slate-700 p-2 min-h-[80px] relative bg-amber-900/10 cursor-not-allowed">
+                      <div class="absolute inset-0 flex items-center justify-center">
+                        <i class="fa-solid fa-umbrella-beach text-amber-800/60 text-base"></i>
+                      </div>
+                    </div>`;
                   return `
                     <div onclick="CalendarCtrl.openCell('${m.id}','${dateStr}')"
                       class="border-t border-l border-slate-700 p-2 min-h-[80px] cursor-pointer hover:bg-slate-700/40 transition-colors group relative">
@@ -120,8 +132,11 @@ export const CalendarCtrl = {
                            </div>`
                         : dayTasks.map((t, idx) => `
                             ${t.shift !== (dayTasks[idx - 1]?.shift) ? (SHIFT_HEADER[t.shift] || '') : ''}
-                            <div class="flex items-center gap-1.5 mb-1 ${t.status === 'done' ? 'opacity-40' : ''}">
-                              <span class="w-1.5 h-1.5 rounded-full shrink-0 ${TYPE_DOT[t.type] || 'bg-slate-500'}"></span>
+                            <div class="flex items-center gap-1.5 mb-1 group/task ${t.status === 'done' ? 'opacity-40' : ''}">
+                              <button onclick="event.stopPropagation(); CalendarCtrl.toggleStatus('${t.id}','${t.status}')"
+                                class="shrink-0 transition-colors ${t.status === 'done' ? 'text-accent' : 'text-slate-600 hover:text-accent'}">
+                                <i class="fa-solid ${t.status === 'done' ? 'fa-circle-check' : 'fa-circle'} text-[10px]"></i>
+                              </button>
                               <span class="text-xs text-slate-300 truncate ${t.status === 'done' ? 'line-through' : ''}">
                                 ${t.demand_id ? '<i class="fa-solid fa-link text-[8px] text-slate-500 mr-0.5"></i>' : ''}${t.title}
                               </span>
@@ -132,6 +147,16 @@ export const CalendarCtrl = {
         </div>
       </div>
       </div>`;
+  },
+
+  async toggleStatus(id, current) {
+    const next = current === 'done' ? 'pending' : 'done';
+    const { error } = await db.from('tb_aps_tasks').update({ status: next }).eq('id', id);
+    if (error) { window.Toast.show('Erro ao atualizar.', 'error'); return; }
+    const task = AppState.tasks.find(t => t.id === id);
+    if (task) task.status = next;
+    this._render();
+    if (document.getElementById('cal-modal-body')) this._renderModalList();
   },
 
   shiftWeek(delta) {
@@ -159,11 +184,17 @@ export const CalendarCtrl = {
   // ── Modal ──────────────────────────────────────────────────────────────────
 
   async openCell(memberId, dateStr) {
+    const member = AppState.members.find(m => m.id === memberId);
+    if (member?.on_vacation && (
+      !member.vacation_start || !member.vacation_end
+        ? true
+        : dateStr >= member.vacation_start && dateStr <= member.vacation_end
+    )) return;
+
     this._cellMemberId     = memberId;
     this._cellDate         = dateStr;
     this._selectedDemandId = null;
 
-    const member  = AppState.members.find(m => m.id === memberId);
     const [y, mo, d] = dateStr.split('-');
     const dayName = DAY_NAMES[new Date(dateStr + 'T12:00:00').getDay() - 1] || '';
 
@@ -218,6 +249,10 @@ export const CalendarCtrl = {
                   <p class="text-xs text-slate-400 mt-0.5">${TYPE_LABEL[t.type] || ''} · ${t.priority === 'principal' ? 'Principal' : 'Secundária'}</p>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
+                  <button onclick="CalendarCtrl.toggleStatus('${t.id}','${t.status}')"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${t.status === 'done' ? 'text-accent hover:text-slate-400 hover:bg-slate-600' : 'text-slate-400 hover:text-accent hover:bg-slate-600'}">
+                    <i class="fa-solid ${t.status === 'done' ? 'fa-circle-check' : 'fa-circle'} text-sm"></i>
+                  </button>
                   <button onclick="CalendarCtrl.openEditForm('${t.id}')"
                     class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition-colors">
                     <i class="fa-solid fa-pen text-xs"></i>

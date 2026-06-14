@@ -9,8 +9,11 @@ create table if not exists tb_aps_members (
   name        text not null,
   role        text not null,   -- 'estagiario' | 'tecnico' | 'analista_jr' | 'analista_pl' | 'analista_sr'
   regime      text not null,   -- 'estagio' | 'clt'
-  active      boolean default true,
-  updated_at  timestamptz default now()
+  active          boolean default true,
+  on_vacation     boolean default false,
+  vacation_start  text,   -- 'YYYY-MM-DD'
+  vacation_end    text,   -- 'YYYY-MM-DD'
+  updated_at      timestamptz default now()
 );
 
 -- TB_APS_TASKS (tarefas alocadas + demandas do banco)
@@ -31,6 +34,9 @@ create table if not exists tb_aps_tasks (
 
 -- Se a tabela já existir, rode manualmente:
 -- ALTER TABLE tb_aps_tasks ADD COLUMN IF NOT EXISTS demand_id TEXT REFERENCES tb_aps_tasks(id) ON DELETE SET NULL;
+-- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS on_vacation BOOLEAN DEFAULT false;
+-- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_start TEXT;
+-- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_end TEXT;
 
 -- AUTO-UPDATE updated_at
 create or replace function update_updated_at()

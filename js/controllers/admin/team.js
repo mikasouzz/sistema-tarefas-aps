@@ -1,6 +1,12 @@
 import { db } from '../../db.js';
 import { AppState, setAppState } from '../../state.js';
 
+function fmtDate(str) {
+  if (!str) return '';
+  const [, m, d] = str.split('-');
+  return `${d}/${m}`;
+}
+
 const ROLE_LABEL = {
   estagiario:  'Estagiário',
   tecnico:     'Técnico',
@@ -40,7 +46,7 @@ export const TeamCtrl = {
               <th class="text-left px-5 py-3 font-medium">Nome</th>
               <th class="text-left px-5 py-3 font-medium hidden sm:table-cell">Cargo</th>
               <th class="text-left px-5 py-3 font-medium hidden md:table-cell">Regime</th>
-              <th class="text-left px-5 py-3 font-medium">Status</th>
+              <th class="text-left px-5 py-3 font-medium">Situação</th>
               <th class="px-5 py-3"></th>
             </tr>
           </thead>
@@ -58,9 +64,16 @@ export const TeamCtrl = {
                       </span>
                     </td>
                     <td class="px-5 py-3.5">
-                      <span class="text-xs px-2 py-0.5 rounded-full ${m.active ? 'bg-emerald-900/40 border border-emerald-700 text-emerald-300' : 'bg-slate-700 text-slate-400'}">
-                        ${m.active ? 'Ativo' : 'Inativo'}
-                      </span>
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-xs px-2 py-0.5 rounded-full ${m.active ? 'bg-emerald-900/40 border border-emerald-700 text-emerald-300' : 'bg-slate-700 text-slate-400'}">
+                          ${m.active ? 'Ativo' : 'Inativo'}
+                        </span>
+                        ${m.on_vacation ? `
+                          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 border border-amber-700 text-amber-300 flex items-center gap-1">
+                            <i class="fa-solid fa-umbrella-beach text-[10px]"></i>
+                            Férias${m.vacation_start && m.vacation_end ? ` ${fmtDate(m.vacation_start)}–${fmtDate(m.vacation_end)}` : ''}
+                          </span>` : ''}
+                      </div>
                     </td>
                     <td class="px-5 py-3.5">
                       <div class="flex items-center gap-2 justify-end">
@@ -120,6 +133,31 @@ export const TeamCtrl = {
                 <option value="clt"     ${m?.regime === 'clt'     ? 'selected' : ''}>CLT</option>
               </select>
             </div>
+            <div class="border-t border-slate-700 pt-4 flex flex-col gap-3">
+              <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" id="tf-vacation" onchange="TeamCtrl._toggleVacationDates()"
+                  ${m?.on_vacation ? 'checked' : ''}
+                  class="w-4 h-4 accent-amber-400 cursor-pointer">
+                <span class="text-sm text-slate-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-umbrella-beach text-amber-400 text-xs"></i>
+                  De férias
+                </span>
+              </label>
+              <div id="tf-vacation-dates" class="${m?.on_vacation ? 'flex' : 'hidden'} gap-3">
+                <div class="flex-1">
+                  <label class="block text-xs text-slate-400 mb-1.5">Início</label>
+                  <input id="tf-vac-start" type="date" value="${m?.vacation_start || ''}"
+                    class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                           focus:outline-none focus:border-primary transition-colors">
+                </div>
+                <div class="flex-1">
+                  <label class="block text-xs text-slate-400 mb-1.5">Fim</label>
+                  <input id="tf-vac-end" type="date" value="${m?.vacation_end || ''}"
+                    class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                           focus:outline-none focus:border-primary transition-colors">
+                </div>
+              </div>
+            </div>
             <div class="flex gap-3 mt-2">
               <button type="button" onclick="TeamCtrl.closeForm()"
                 class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
@@ -144,18 +182,27 @@ export const TeamCtrl = {
     if (e.target === e.currentTarget) this.closeForm();
   },
 
+  _toggleVacationDates() {
+    const checked = document.getElementById('tf-vacation').checked;
+    document.getElementById('tf-vacation-dates').classList.toggle('hidden', !checked);
+    document.getElementById('tf-vacation-dates').classList.toggle('flex', checked);
+  },
+
   async save(e, id) {
     e.preventDefault();
-    const name   = document.getElementById('tf-name').value.trim();
-    const role   = document.getElementById('tf-role').value;
-    const regime = document.getElementById('tf-regime').value;
+    const name           = document.getElementById('tf-name').value.trim();
+    const role           = document.getElementById('tf-role').value;
+    const regime         = document.getElementById('tf-regime').value;
+    const on_vacation    = document.getElementById('tf-vacation').checked;
+    const vacation_start = on_vacation ? (document.getElementById('tf-vac-start').value || null) : null;
+    const vacation_end   = on_vacation ? (document.getElementById('tf-vac-end').value || null) : null;
 
     let error;
     if (id) {
-      ({ error } = await db.from('tb_aps_members').update({ name, role, regime }).eq('id', id));
+      ({ error } = await db.from('tb_aps_members').update({ name, role, regime, on_vacation, vacation_start, vacation_end }).eq('id', id));
     } else {
       const newId = window.App.generateId();
-      ({ error } = await db.from('tb_aps_members').insert({ id: newId, name, role, regime, active: true }));
+      ({ error } = await db.from('tb_aps_members').insert({ id: newId, name, role, regime, active: true, on_vacation, vacation_start, vacation_end }));
     }
 
     if (error) { window.Toast.show('Erro ao salvar.', 'error'); return; }
