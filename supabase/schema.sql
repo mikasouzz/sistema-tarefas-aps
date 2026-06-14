@@ -50,6 +50,21 @@ alter table tb_aps_absences enable row level security;
 create policy "anon read tb_aps_absences"    on tb_aps_absences for select using (true);
 create policy "admin manage tb_aps_absences" on tb_aps_absences for all    using (auth.role() = 'authenticated');
 
+-- TB_APS_TASK_REQUESTS
+create table if not exists tb_aps_task_requests (
+  id           text primary key,
+  task_id      text references tb_aps_tasks(id) on delete cascade,
+  task_title   text not null,
+  member_name  text not null,
+  justification text not null,
+  created_at   timestamptz default now()
+);
+
+alter table tb_aps_task_requests enable row level security;
+create policy "anon read tb_aps_task_requests"   on tb_aps_task_requests for select using (true);
+create policy "anon insert tb_aps_task_requests" on tb_aps_task_requests for insert with check (true);
+create policy "admin manage tb_aps_task_requests" on tb_aps_task_requests for all using (auth.role() = 'authenticated');
+
 -- AUTO-UPDATE updated_at
 create or replace function update_updated_at()
 returns trigger as $$

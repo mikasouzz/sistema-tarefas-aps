@@ -294,12 +294,15 @@ export const CalendarCtrl = {
       <div class="p-5 flex flex-col gap-2">
         ${existing.length === 0
           ? `<p class="text-slate-500 text-sm text-center py-6">Nenhuma tarefa neste dia.</p>`
-          : existing.map(t => `
-              <div class="flex items-center gap-2 bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5">
+          : existing.map(t => {
+              const taskReq = AppState.requests?.find(r => r.task_id === t.id);
+              return `
+              <div class="flex items-center gap-2 bg-slate-700/60 border ${taskReq ? 'border-rose-700/50' : 'border-slate-600'} rounded-lg px-3 py-2.5 ${taskReq ? 'opacity-60' : ''}">
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-1.5 flex-wrap">
                     ${t.demand_id ? '<i class="fa-solid fa-link text-slate-500 text-xs"></i>' : ''}
                     <p class="text-sm text-white truncate ${t.status === 'done' ? 'line-through opacity-50' : ''}">${t.title}</p>
+                    ${taskReq ? '<span class="text-xs text-rose-400 flex items-center gap-1"><i class="fa-solid fa-circle-xmark text-[10px]"></i>Remoção solicitada</span>' : ''}
                   </div>
                   <p class="text-xs text-slate-400 mt-0.5">${TYPE_LABEL[t.type] || ''} · ${t.priority === 'principal' ? 'Principal' : 'Secundária'}</p>
                 </div>
@@ -317,7 +320,8 @@ export const CalendarCtrl = {
                     <i class="fa-solid fa-trash text-xs"></i>
                   </button>
                 </div>
-              </div>`).join('')}
+              </div>`;
+            }).join('')}
 
         <button onclick="CalendarCtrl.openAddForm()"
           class="w-full flex items-center justify-center gap-2 mt-2 border border-dashed border-slate-600

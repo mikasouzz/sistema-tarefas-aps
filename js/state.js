@@ -8,6 +8,7 @@ export let AppState = {
   tasks: [],             // tarefas alocadas (member_id NOT NULL)
   notices: [],
   absences: [],
+  requests: [],
   isAdmin: false,
   selectedWeekStart: getMondayOf(new Date()),
   selectedMemberId: null,

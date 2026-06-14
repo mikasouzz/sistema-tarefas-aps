@@ -9,7 +9,7 @@ export const App = {
   },
 
   async loadData() {
-    const [mRes, tRes, nRes, aRes] = await Promise.all([
+    const [mRes, tRes, nRes, aRes, rRes] = await Promise.all([
       db.from('tb_aps_members').select('*').order('name'),
       db.from('tb_aps_tasks')
         .select('*, tb_aps_members(name, role)')
@@ -17,6 +17,7 @@ export const App = {
         .order('scheduled_date'),
       db.from('tb_aps_notices').select('*').order('created_at', { ascending: false }),
       db.from('tb_aps_absences').select('*'),
+      db.from('tb_aps_task_requests').select('*').order('created_at', { ascending: false }),
     ]);
     if (mRes.error) window.Toast?.show('Erro ao carregar membros.', 'error');
     if (tRes.error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
@@ -25,6 +26,7 @@ export const App = {
       tasks:    tRes.data  || [],
       notices:  nRes.data  || [],
       absences: aRes.data  || [],
+      requests: rRes.data  || [],
     });
   },
 
@@ -79,8 +81,9 @@ export const App = {
       if (tab === 'team')     window.TeamCtrl.init(content);
       if (tab === 'history')  window.HistoryCtrl.init(content);
       if (tab === 'bank')     window.BankCtrl.init(content);
-      if (tab === 'tb_aps_notices')  window.NoticesCtrl.init(content);
-      if (tab === 'backup')   window.BackupCtrl.init(content);
+      if (tab === 'notices')   window.NoticesCtrl.init(content);
+      if (tab === 'backup')    window.BackupCtrl.init(content);
+      if (tab === 'requests')  window.RequestsCtrl.init(content);
     }
   },
 
@@ -131,12 +134,16 @@ export const App = {
             <span class="mt-1 inline-block bg-violet-700 text-violet-100 text-xs px-2 py-0.5 rounded-full font-medium">Supervisão</span>
           </div>
           <nav class="flex-1 p-2 flex flex-col gap-0.5 overflow-y-auto">
-            ${btn('calendar', 'fa-calendar-alt',         'Cronograma')}
-            ${btn('team',     'fa-users',                'Equipe')}
-            ${btn('history',  'fa-clock-rotate-left',    'Histórico')}
-            ${btn('bank',     'fa-database',             'Banco & Estudos')}
-            ${btn('tb_aps_notices',  'fa-bell',                 'Avisos')}
-            ${btn('backup',   'fa-box-archive',          'Backup')}
+            ${btn('calendar', 'fa-calendar-alt',      'Cronograma')}
+            ${btn('team',     'fa-users',             'Equipe')}
+            ${btn('history',  'fa-clock-rotate-left', 'Histórico')}
+            ${btn('bank',     'fa-database',          'Banco & Estudos')}
+            ${btn('notices',  'fa-bell',              'Avisos')}
+            <div id="requests-badge-wrap" class="relative">
+              ${btn('requests', 'fa-inbox', 'Solicitações')}
+              ${AppState.requests.length > 0 ? `<span id="requests-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1">${AppState.requests.length}</span>` : ''}
+            </div>
+            ${btn('backup',   'fa-box-archive',       'Backup')}
           </nav>
           <div class="px-4 py-2 border-t border-slate-700">
             <button onclick="App.navigate('changelog')"
@@ -151,6 +158,25 @@ export const App = {
         <!-- Conteúdo -->
         <main id="content" class="flex-1 p-6 overflow-hidden flex flex-col"></main>
       </div>`;
+  },
+
+  refreshRequestsBadge() {
+    const wrap = document.getElementById('requests-badge-wrap');
+    if (!wrap) return;
+    const count   = AppState.requests.length;
+    const cls     = 'absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1';
+    let badge     = document.getElementById('requests-badge');
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.id = 'requests-badge';
+        badge.className = cls;
+        wrap.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else {
+      badge?.remove();
+    }
   },
 
   async init() {

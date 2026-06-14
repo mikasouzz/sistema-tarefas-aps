@@ -17,5 +17,6 @@ import './controllers/admin/history.js';
 import './controllers/admin/bank.js';
 import './controllers/admin/notices.js';
 import './controllers/admin/backup.js';
+import './controllers/admin/requests.js';
 
 window.onload = () => App.init();

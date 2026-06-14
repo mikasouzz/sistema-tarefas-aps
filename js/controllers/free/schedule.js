@@ -1,3 +1,4 @@
+import { db } from '../../db.js';
 import { AppState, setAppState } from '../../state.js';
 import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../utils/date.js';
 
@@ -155,11 +156,13 @@ export const ScheduleCtrl = {
   },
 
   _miniCard(t) {
-    const done       = t.status === 'done';
-    const hasTime    = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
+    const done        = t.status === 'done';
+    const req         = AppState.requests?.find(r => r.task_id === t.id);
+    const hasTime     = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
     const isPrincipal = t.priority === 'principal';
     return `
-      <div class="bg-slate-700/60 border border-slate-600 rounded-lg p-2 text-xs ${done ? 'opacity-50' : ''} ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}">
+      <div class="bg-slate-700/60 border border-slate-600 rounded-lg p-2 text-xs
+                  ${done || req ? 'opacity-50' : ''} ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-start justify-between gap-1">
           <span class="text-slate-200 leading-tight ${done ? 'line-through text-slate-500' : ''}">${t.title}</span>
           ${SHIFT_BADGE[t.shift] || ''}
@@ -175,7 +178,93 @@ export const ScheduleCtrl = {
             <i class="fa-solid fa-star"></i>
           </button>` : ''}
         ${done ? '<span class="mt-1 block text-accent"><i class="fa-solid fa-circle-check text-xs"></i> Concluída</span>' : ''}
+        <div class="border-t border-slate-600/50 mt-2 pt-1.5 flex justify-end">
+          ${req
+            ? `<span class="text-rose-400 flex items-center gap-0.5">
+                 <i class="fa-solid fa-circle-xmark text-[9px]"></i> Aguardando supervisão
+               </span>`
+            : `<button onclick="ScheduleCtrl.handleRequest('${t.id}')"
+                 class="text-slate-500 hover:text-rose-400 flex items-center gap-0.5 transition-colors">
+                 <i class="fa-solid fa-circle-xmark text-[9px]"></i> Solicitar remoção
+               </button>`}
+        </div>
       </div>`;
+  },
+
+  handleRequest(taskId) {
+    if (AppState.requests?.find(r => r.task_id === taskId)) {
+      window.Toast.show('Já existe uma solicitação pendente para esta tarefa.', 'info', 4000);
+      return;
+    }
+    const task = AppState.tasks.find(t => t.id === taskId);
+    if (task) this._openRequestModal(task);
+  },
+
+  _openRequestModal(task) {
+    const memberName = AppState.members.find(m => m.id === task.member_id)?.name || '—';
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="ScheduleCtrl._reqBackdrop(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-white">Solicitar remoção</h3>
+            <button onclick="ScheduleCtrl._closeReqModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 mb-4">
+            <p class="text-xs text-slate-500 mb-0.5">Tarefa</p>
+            <p class="text-sm text-white font-medium">${task.title}</p>
+          </div>
+          <form onsubmit="ScheduleCtrl._submitRequest(event,'${task.id}','${memberName}','${task.title.replace(/'/g, '&#39;')}')">
+            <div class="mb-4">
+              <label class="block text-sm text-slate-400 mb-1.5">Justificativa</label>
+              <textarea id="req-justification" required rows="4"
+                placeholder="Descreva o motivo pelo qual a tarefa não pôde ser realizada…"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
+                       focus:outline-none focus:border-primary transition-colors resize-none text-sm"></textarea>
+            </div>
+            <div class="flex gap-3">
+              <button type="button" onclick="ScheduleCtrl._closeReqModal()"
+                class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                Cancelar
+              </button>
+              <button type="submit"
+                class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                Enviar solicitação
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+    setTimeout(() => document.getElementById('req-justification')?.focus(), 50);
+  },
+
+  _closeReqModal() { document.getElementById('modal-container').innerHTML = ''; },
+  _reqBackdrop(e)  { if (e.target === e.currentTarget) this._closeReqModal(); },
+
+  async _submitRequest(e, taskId, memberName, taskTitle) {
+    e.preventDefault();
+    const justification = document.getElementById('req-justification').value.trim();
+    const id            = window.App.generateId();
+
+    const { error } = await db.from('tb_aps_task_requests').insert({
+      id, task_id: taskId, task_title: taskTitle, member_name: memberName, justification,
+    });
+    if (error) { window.Toast.show('Erro ao enviar solicitação.', 'error'); return; }
+
+    setAppState({
+      requests: [...AppState.requests, {
+        id, task_id: taskId, task_title: taskTitle,
+        member_name: memberName, justification,
+        created_at: new Date().toISOString(),
+      }],
+    });
+    this._closeReqModal();
+    this._render();
+    window.Toast.show('Solicitação enviada para a supervisão.', 'success');
   },
 
   selectMember(id) {
