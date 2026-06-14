@@ -32,7 +32,7 @@ const RELEASES = [
         items: [
           {
             name: 'Visão Geral (dashboard)',
-            desc: 'Nova tela inicial do painel de supervisão. Exibe em tempo real: progresso de tarefas do dia, membros sem tarefas, ausentes, férias ativas e encerradas, tarefas pendentes de dias anteriores e próximas reuniões e treinamentos dos próximos 7 dias.',
+            desc: 'Nova tela inicial do painel de supervisão. Exibe em tempo real: progresso de tarefas do dia, membros sem tarefas, ausentes, férias ativas e encerradas, tarefas pendentes de dias anteriores, próximas reuniões e treinamentos dos próximos 7 dias, e alerta de conflito entre turno cadastrado e horário informado.',
           },
           {
             name: 'Solicitações',

@@ -79,6 +79,17 @@ export const AdminDashCtrl = {
         return (a.event_time || '00:00').localeCompare(b.event_time || '00:00');
       });
 
+    // Reuniões/treinamentos com horário fora do turno informado
+    const timeMismatch = tasks.filter(t => {
+      if ((t.type !== 'reuniao' && t.type !== 'treinamento') || t.status === 'done') return false;
+      if (!t.event_time || (t.shift !== 'manha' && t.shift !== 'tarde')) return false;
+      const isManha = t.event_time < '12:00';
+      return (t.shift === 'manha' && !isManha) || (t.shift === 'tarde' && isManha);
+    }).sort((a, b) => {
+      if (a.scheduled_date !== b.scheduled_date) return a.scheduled_date.localeCompare(b.scheduled_date);
+      return (a.event_time || '').localeCompare(b.event_time || '');
+    });
+
     this._container.innerHTML = `
       <div class="flex-1 flex flex-col min-h-0">
         <div class="mb-6 shrink-0 flex items-center justify-between">
@@ -103,9 +114,10 @@ export const AdminDashCtrl = {
               ${this._cardAbsent(absentToday, active)}
               ${this._cardVacation(vacActive, vacExpired)}
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
               ${this._cardOverdue(overdueByMember)}
               ${this._cardUpcoming(upcoming)}
+              ${this._cardTimeMismatch(timeMismatch)}
             </div>
           </div>
         </div>
@@ -259,6 +271,44 @@ export const AdminDashCtrl = {
       ? { cls: 'bg-rose-900/40 border border-rose-700 text-rose-300', label: total }
       : null;
     return this._card('fa-circle-exclamation', 'text-rose-400', 'Pendentes de Dias Anteriores', badge, content);
+  },
+
+  _cardTimeMismatch(mismatches) {
+    const SHIFT_LABEL = { manha: 'Manhã', tarde: 'Tarde' };
+    const SHIFT_ICON  = { manha: 'fa-sun', tarde: 'fa-cloud-sun' };
+    const content = mismatches.length === 0
+      ? this._empty('Nenhum conflito de horário encontrado.')
+      : `<div class="flex flex-col">
+           ${mismatches.map(t => {
+             const expectedKey   = t.event_time < '12:00' ? 'manha' : 'tarde';
+             const expectedLabel = SHIFT_LABEL[expectedKey];
+             const expectedIcon  = SHIFT_ICON[expectedKey];
+             return `
+             <div class="flex items-start gap-3 py-2 border-b border-slate-700/50 last:border-0">
+               <div class="shrink-0 text-center w-10 mt-0.5">
+                 <p class="text-xs font-bold text-orange-400">${fmtShort(t.scheduled_date)}</p>
+                 <p class="text-[10px] text-slate-500">${t.event_time}</p>
+               </div>
+               <div class="flex-1 min-w-0">
+                 <p class="text-sm text-slate-200 truncate">${t.title}</p>
+                 <p class="text-[10px] text-slate-500 mb-1">${t.tb_aps_members?.name || '—'}</p>
+                 <div class="flex items-center gap-1.5">
+                   <span class="inline-flex items-center gap-1 text-[10px] text-slate-500 line-through">
+                     <i class="fa-solid ${SHIFT_ICON[t.shift]}"></i>${SHIFT_LABEL[t.shift]}
+                   </span>
+                   <i class="fa-solid fa-arrow-right text-[9px] text-orange-500"></i>
+                   <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-400">
+                     <i class="fa-solid ${expectedIcon}"></i>${expectedLabel}
+                   </span>
+                 </div>
+               </div>
+             </div>`;
+           }).join('')}
+         </div>`;
+    const badge = mismatches.length > 0
+      ? { cls: 'bg-orange-900/40 border border-orange-600 text-orange-300', label: mismatches.length }
+      : null;
+    return this._card('fa-clock', 'text-orange-400', 'Conflito Turno × Horário', badge, content);
   },
 
   _cardUpcoming(upcoming) {
