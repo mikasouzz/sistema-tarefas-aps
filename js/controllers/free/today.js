@@ -152,7 +152,7 @@ export const TodayCtrl = {
     const map = new Map();
     for (const t of this.tasks) {
       const key = t.member_id;
-      if (!map.has(key)) map.set(key, { name: t.members?.name || '—', memberId: key, tasks: [] });
+      if (!map.has(key)) map.set(key, { name: t.tb_aps_members?.name || '—', memberId: key, tasks: [] });
       map.get(key).tasks.push(t);
     }
     const SHIFT_ORDER = { manha: 0, tarde: 1, livre: 2 };
