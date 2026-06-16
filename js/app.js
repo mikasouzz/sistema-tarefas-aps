@@ -14,7 +14,7 @@ export const App = {
   },
 
   async loadData() {
-    const [mRes, tRes, nRes, aRes, rRes] = await Promise.all([
+    const [mRes, tRes, nRes, aRes, rRes, iRes] = await Promise.all([
       db.from('tb_aps_members').select('*').order('name'),
       db.from('tb_aps_tasks')
         .select('*, tb_aps_members(name, role)')
@@ -23,15 +23,17 @@ export const App = {
       db.from('tb_aps_notices').select('*').order('created_at', { ascending: false }),
       db.from('tb_aps_absences').select('*'),
       db.from('tb_aps_task_requests').select('*').order('created_at', { ascending: false }),
+      db.from('tb_aps_task_insert_requests').select('*').order('created_at', { ascending: false }),
     ]);
     if (mRes.error) window.Toast?.show('Erro ao carregar membros.', 'error');
     if (tRes.error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
     setAppState({
-      members:  mRes.data  || [],
-      tasks:    tRes.data  || [],
-      notices:  nRes.data  || [],
-      absences: aRes.data  || [],
-      requests: rRes.data  || [],
+      members:        mRes.data || [],
+      tasks:          tRes.data || [],
+      notices:        nRes.data || [],
+      absences:       aRes.data || [],
+      requests:       rRes.data || [],
+      insertRequests: iRes.data || [],
     });
   },
 
@@ -167,7 +169,7 @@ export const App = {
             ${btn('notices',  'fa-bell',              'Avisos')}
             <div id="requests-badge-wrap" class="relative">
               ${btn('requests', 'fa-inbox', 'Solicitações')}
-              ${AppState.requests.length > 0 ? `<span id="requests-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1">${AppState.requests.length}</span>` : ''}
+              ${(AppState.requests.length + AppState.insertRequests.length) > 0 ? `<span id="requests-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1">${AppState.requests.length + AppState.insertRequests.length}</span>` : ''}
             </div>
             ${btn('backup',   'fa-box-archive',       'Backup')}
           </nav>
@@ -189,7 +191,7 @@ export const App = {
   refreshRequestsBadge() {
     const wrap = document.getElementById('requests-badge-wrap');
     if (!wrap) return;
-    const count   = AppState.requests.length;
+    const count   = AppState.requests.length + AppState.insertRequests.length;
     const cls     = 'absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1';
     let badge     = document.getElementById('requests-badge');
     if (count > 0) {

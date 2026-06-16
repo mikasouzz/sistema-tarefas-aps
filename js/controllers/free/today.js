@@ -186,19 +186,28 @@ export const TodayCtrl = {
     const doneCount = group.tasks.filter(t => t.status === 'done').length;
     const allDone   = doneCount === total;
 
+    const pendingInserts = AppState.insertRequests.filter(r => r.member_id === group.memberId).length;
+
     return `
       <div class="bg-slate-800 border ${borderClass} rounded-xl overflow-hidden flex flex-col">
-        <div class="px-4 py-3 border-b ${dividerClass} flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0
-                      ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
-            ${allDone ? '<i class="fa-solid fa-check text-xs"></i>' : initial}
+        <div class="px-4 py-3 border-b ${dividerClass} flex flex-col gap-2">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0
+                        ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
+              ${allDone ? '<i class="fa-solid fa-check text-xs"></i>' : initial}
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-white text-sm truncate">${group.name}</p>
+              <p class="text-xs text-slate-400">${doneCount} de ${total} concluída${total !== 1 ? 's' : ''}</p>
+            </div>
+            ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-sm shrink-0"></i>' : ''}
+            ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-sm shrink-0"></i>' : ''}
           </div>
-          <div class="min-w-0 flex-1">
-            <p class="font-semibold text-white text-sm truncate">${group.name}</p>
-            <p class="text-xs text-slate-400">${doneCount} de ${total} concluída${total !== 1 ? 's' : ''}</p>
-          </div>
-          ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-sm shrink-0"></i>' : ''}
-          ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-sm shrink-0"></i>' : ''}
+          <button onclick="TodayCtrl._openInsertModal('${group.memberId}')"
+            class="w-full py-1.5 flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-primary border border-dashed border-slate-700 hover:border-primary/50 rounded-lg transition-colors">
+            <i class="fa-solid fa-plus text-[10px]"></i> Solicitar nova tarefa
+            ${pendingInserts > 0 ? `<span class="ml-1 bg-primary/20 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full">${pendingInserts}</span>` : ''}
+          </button>
         </div>
         ${onVacation ? `
           <div class="px-4 py-2 bg-amber-900/20 border-b border-amber-700/40 flex items-center gap-1.5">
@@ -257,6 +266,155 @@ export const TodayCtrl = {
                </button>`}
         </div>` : ''}
       </div>`;
+  },
+
+  _openInsertModal(memberId) {
+    const member = AppState.members.find(m => m.id === memberId);
+    const memberName = member?.name || '—';
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="TodayCtrl._insertBackdrop(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-white">Solicitar nova tarefa</h3>
+            <button onclick="TodayCtrl._closeInsertModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 mb-4">
+            <p class="text-xs text-slate-500 mb-0.5">Membro</p>
+            <p class="text-sm text-white font-medium">${memberName}</p>
+          </div>
+          <form onsubmit="TodayCtrl._submitInsertRequest(event,'${memberId}')">
+            <div class="mb-3">
+              <label class="block text-sm text-slate-400 mb-1.5">Título <span class="text-rose-400">*</span></label>
+              <input id="ins-title" type="text" required maxlength="120"
+                placeholder="Nome da tarefa…"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
+                       focus:outline-none focus:border-primary transition-colors text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="block text-sm text-slate-400 mb-1.5">Tipo</label>
+                <select id="ins-type" onchange="TodayCtrl._toggleInsertEventTime()"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors text-sm">
+                  <option value="">—</option>
+                  <option value="operacional">Operacional</option>
+                  <option value="analitica">Analítica</option>
+                  <option value="estrategia">Estratégia</option>
+                  <option value="treinamento">Treinamento</option>
+                  <option value="reuniao">Reunião</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-400 mb-1.5">Turno</label>
+                <select id="ins-shift"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors text-sm">
+                  <option value="">—</option>
+                  <option value="manha">Manhã</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="livre">Livre</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="block text-sm text-slate-400 mb-1.5">Prioridade</label>
+                <select id="ins-priority"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors text-sm">
+                  <option value="">—</option>
+                  <option value="principal">Principal</option>
+                  <option value="secundaria">Secundária</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-400 mb-1.5">Data</label>
+                <input id="ins-date" type="date" min="${today}"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors text-sm">
+              </div>
+            </div>
+            <div id="ins-time-wrap" class="mb-3 hidden">
+              <label class="block text-sm text-slate-400 mb-1.5">Horário do evento</label>
+              <input id="ins-time" type="time"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                       focus:outline-none focus:border-primary transition-colors text-sm">
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm text-slate-400 mb-1.5">Justificativa</label>
+              <textarea id="ins-justification" rows="3" maxlength="200"
+                placeholder="Por que esta tarefa precisa ser adicionada…"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
+                       focus:outline-none focus:border-primary transition-colors resize-none text-sm"></textarea>
+            </div>
+            <div class="flex gap-3">
+              <button type="button" onclick="TodayCtrl._closeInsertModal()"
+                class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                Cancelar
+              </button>
+              <button type="submit"
+                class="flex-1 bg-primary hover:bg-primary/90 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                Enviar solicitação
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+    setTimeout(() => document.getElementById('ins-title')?.focus(), 50);
+  },
+
+  _closeInsertModal() {
+    document.getElementById('modal-container').innerHTML = '';
+  },
+
+  _insertBackdrop(e) {
+    if (e.target === e.currentTarget) this._closeInsertModal();
+  },
+
+  _toggleInsertEventTime() {
+    const type = document.getElementById('ins-type')?.value;
+    const wrap = document.getElementById('ins-time-wrap');
+    if (wrap) wrap.classList.toggle('hidden', !['treinamento', 'reuniao'].includes(type));
+  },
+
+  async _submitInsertRequest(e, memberId) {
+    e.preventDefault();
+    const member      = AppState.members.find(m => m.id === memberId);
+    const memberName  = member?.name || '—';
+    const title       = document.getElementById('ins-title').value.trim();
+    const type        = document.getElementById('ins-type').value || null;
+    const shift       = document.getElementById('ins-shift').value || null;
+    const priority    = document.getElementById('ins-priority').value || null;
+    const scheduled_date = document.getElementById('ins-date').value || null;
+    const showTime    = ['treinamento', 'reuniao'].includes(type);
+    const event_time  = showTime ? (document.getElementById('ins-time').value || null) : null;
+    const justification = document.getElementById('ins-justification').value.trim() || null;
+    const id          = window.App.generateId();
+
+    const { error } = await db.from('tb_aps_task_insert_requests').insert({
+      id, member_id: memberId, member_name: memberName,
+      title, type, shift, priority, scheduled_date, event_time, justification,
+    });
+
+    if (error) { window.Toast.show('Erro ao enviar solicitação.', 'error'); return; }
+
+    setAppState({
+      insertRequests: [...AppState.insertRequests, {
+        id, member_id: memberId, member_name: memberName,
+        title, type, shift, priority, scheduled_date, event_time, justification,
+        created_at: new Date().toISOString(),
+      }],
+    });
+
+    this._closeInsertModal();
+    this._render();
+    window.Toast.show('Solicitação enviada para a supervisão.', 'success');
   },
 
   handleRequest(taskId) {

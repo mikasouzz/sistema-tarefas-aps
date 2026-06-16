@@ -9,6 +9,7 @@ export let AppState = {
   notices: [],
   absences: [],
   requests: [],
+  insertRequests: [],
   isAdmin: false,
   selectedWeekStart: getMondayOf(new Date()),
   selectedMemberId: null,

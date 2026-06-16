@@ -65,6 +65,30 @@ create policy "anon read tb_aps_task_requests"   on tb_aps_task_requests for sel
 create policy "anon insert tb_aps_task_requests" on tb_aps_task_requests for insert with check (true);
 create policy "admin manage tb_aps_task_requests" on tb_aps_task_requests for all using (auth.role() = 'authenticated');
 
+-- TB_APS_TASK_INSERT_REQUESTS
+-- Execute manualmente no Supabase SQL Editor se a tabela não existir:
+create table if not exists tb_aps_task_insert_requests (
+  id             text primary key,
+  member_id      text references tb_aps_members(id) on delete cascade,
+  member_name    text not null,
+  title          text not null,
+  type           text,            -- 'operacional' | 'analitica' | 'estrategia' | 'treinamento' | 'reuniao'
+  shift          text,            -- 'manha' | 'tarde' | 'livre'
+  priority       text,            -- 'principal' | 'secundaria'
+  scheduled_date text,            -- 'YYYY-MM-DD'
+  event_time     text,            -- 'HH:MM'
+  justification  text,
+  created_at     timestamptz default now()
+);
+
+alter table tb_aps_task_insert_requests enable row level security;
+create policy "anon read tb_aps_task_insert_requests"   on tb_aps_task_insert_requests for select using (true);
+create policy "anon insert tb_aps_task_insert_requests" on tb_aps_task_insert_requests for insert with check (true);
+create policy "admin manage tb_aps_task_insert_requests" on tb_aps_task_insert_requests for all using (auth.role() = 'authenticated');
+
+grant select, insert on public.tb_aps_task_insert_requests to anon;
+grant all            on public.tb_aps_task_insert_requests to authenticated;
+
 -- AUTO-UPDATE updated_at
 create or replace function update_updated_at()
 returns trigger as $$
