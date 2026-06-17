@@ -77,6 +77,10 @@ export const CalendarCtrl = {
             class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm transition-colors">
             Hoje
           </button>
+          <button onclick="CalendarCtrl.exportWeek()"
+            class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-file-arrow-down text-xs"></i>Exportar
+          </button>
         </div>
       </div>
 
@@ -836,6 +840,112 @@ export const CalendarCtrl = {
     this._render();
     this._renderModalList();
     window.Toast.show('Evento removido para todos do grupo.', 'info');
+  },
+
+  exportWeek() {
+    const weekDays  = this._weekDays();
+    const weekStart = toDateStr(weekDays[0]);
+    const weekEnd   = toDateStr(weekDays[4]);
+    const active    = AppState.members.filter(m => m.active);
+    const weekTasks = AppState.tasks.filter(t =>
+      t.scheduled_date >= weekStart && t.scheduled_date <= weekEnd
+    );
+    const win = window.open('', '_blank');
+    win.document.write(this._printHTML(weekDays, active, weekTasks));
+    win.document.close();
+    win.focus();
+  },
+
+  _printHTML(weekDays, members, tasks) {
+    const fmt = d => { const [,m,day] = toDateStr(d).split('-'); return `${day}/${m}`; };
+    const fmtFull = d => { const [y,m,day] = toDateStr(d).split('-'); return `${day}/${m}/${y}`; };
+    const DAY_LABEL = ['Seg','Ter','Qua','Qui','Sex'];
+    const SHIFTS    = ['manha','tarde','livre'];
+    const SHIFT_LABEL = { manha: 'Manhã', tarde: 'Tarde', livre: 'Livre' };
+    const TYPE_ABBR = { operacional:'Oper.', analitica:'Analít.', estrategia:'Estrat.', treinamento:'Treino', reuniao:'Reunião' };
+    const TYPE_CLS  = { operacional:'op', analitica:'an', estrategia:'es', treinamento:'tr', reuniao:'re' };
+
+    const today = toDateStr(new Date());
+
+    const cell = (memberId, day) => {
+      const dateStr   = toDateStr(day);
+      const dayTasks  = tasks.filter(t => t.member_id === memberId && t.scheduled_date === dateStr);
+      if (dayTasks.length === 0) return `<td><span class="empty">—</span></td>`;
+      const rows = SHIFTS.flatMap(shift => {
+        const st = dayTasks.filter(t => t.shift === shift);
+        if (st.length === 0) return [];
+        return [
+          `<p class="shift-lbl">${SHIFT_LABEL[shift]}</p>`,
+          ...st.map(t => {
+            const cls = TYPE_CLS[t.type] || 'op';
+            const done = t.status === 'done';
+            const bold = t.priority === 'principal';
+            return `<div class="task">
+              <span class="badge ${cls}">${TYPE_ABBR[t.type] || t.type}</span>
+              <span class="ttl${done ? ' done' : ''}${bold ? ' bold' : ''}">${t.title}</span>
+            </div>`;
+          }),
+        ];
+      });
+      return `<td>${rows.join('')}</td>`;
+    };
+
+    const rows = members.map(m => `
+      <tr>
+        <td class="member">${m.name}</td>
+        ${weekDays.map(d => cell(m.id, d)).join('')}
+      </tr>`).join('');
+
+    const headers = weekDays.map((d, i) => {
+      const isToday = toDateStr(d) === today;
+      return `<th${isToday ? ' class="today"' : ''}>${DAY_LABEL[i]}<br>${fmt(d)}</th>`;
+    }).join('');
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Cronograma ${fmt(weekDays[0])} – ${fmt(weekDays[4])}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;font-size:11px;color:#1e293b;background:#fff;padding:20px}
+@page{size:A4 landscape;margin:1cm}
+h1{font-size:15px;font-weight:700;color:#0f172a}
+.sub{font-size:10px;color:#64748b;margin:3px 0 14px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th,td{border:1px solid #e2e8f0;padding:5px 6px;vertical-align:top}
+th{background:#f8fafc;font-weight:600;text-align:center;color:#475569;font-size:10px;line-height:1.4}
+th.today{background:#ede9fe;color:#6d28d9}
+td.member{font-weight:600;color:#1e293b;background:#f8fafc;width:90px;vertical-align:middle}
+.shift-lbl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin:5px 0 2px}
+.shift-lbl:first-child{margin-top:0}
+.task{display:flex;align-items:flex-start;gap:3px;margin-bottom:3px}
+.badge{font-size:8px;padding:1px 3px;border-radius:3px;white-space:nowrap;flex-shrink:0;margin-top:1px;font-weight:600}
+.ttl{font-size:10px;color:#334155;line-height:1.3}
+.ttl.done{text-decoration:line-through;opacity:.45}
+.ttl.bold{font-weight:600;color:#0f172a}
+.op{background:#dbeafe;color:#1d4ed8}
+.an{background:#ede9fe;color:#6d28d9}
+.es{background:#fef3c7;color:#92400e}
+.tr{background:#d1fae5;color:#065f46}
+.re{background:#fce7f3;color:#9d174d}
+.empty{color:#cbd5e1;font-size:10px}
+footer{margin-top:10px;font-size:9px;color:#94a3b8}
+button{margin-bottom:14px;padding:6px 14px;background:#6d28d9;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px}
+@media print{button{display:none}}
+</style>
+</head>
+<body>
+<button onclick="window.print()">Imprimir / Salvar PDF</button>
+<h1>Cronograma da Equipe</h1>
+<p class="sub">Semana de ${fmt(weekDays[0])} a ${fmt(weekDays[4])} &nbsp;·&nbsp; Gerado em ${fmtFull(new Date())}</p>
+<table>
+  <thead><tr><th>Membro</th>${headers}</tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<footer>Sistema de Tarefas APS</footer>
+</body>
+</html>`;
   },
 
   toggleAllMembers(pid, select) {
