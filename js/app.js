@@ -167,14 +167,14 @@ export const App = {
             ${btn('dashboard', 'fa-gauge',             'Visão Geral')}
             ${btn('calendar', 'fa-calendar-alt',      'Cronograma')}
             ${btn('agenda',   'fa-calendar-check',    'Agenda')}
-            ${btn('team',     'fa-users',             'Equipe')}
-            ${btn('history',  'fa-clock-rotate-left', 'Histórico')}
             ${btn('bank',     'fa-database',          'Banco & Estudos')}
+            ${btn('team',     'fa-users',             'Equipe')}
             ${btn('notices',  'fa-bell',              'Avisos')}
             <div id="requests-badge-wrap" class="relative">
               ${btn('requests', 'fa-inbox', 'Solicitações')}
               ${(AppState.requests.length + AppState.insertRequests.length) > 0 ? `<span id="requests-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1">${AppState.requests.length + AppState.insertRequests.length}</span>` : ''}
             </div>
+            ${btn('history',  'fa-clock-rotate-left', 'Histórico')}
             ${btn('backup',   'fa-box-archive',       'Backup')}
           </nav>
           <div class="px-4 py-2 border-t border-slate-700">
