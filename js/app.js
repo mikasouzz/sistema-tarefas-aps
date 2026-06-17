@@ -3,9 +3,9 @@ import { AppState, setAppState } from './state.js';
 
 export const VERSION = 'v1.1';
 
-const FREE_ROUTE  = { today: 'hoje', schedule: 'cronograma', demands: 'demandas', ranking: 'ranking' };
+const FREE_ROUTE  = { today: 'hoje', schedule: 'cronograma', demands: 'demandas', ranking: 'ranking', agenda: 'agenda' };
 const FREE_TAB    = Object.fromEntries(Object.entries(FREE_ROUTE).map(([k, v]) => [v, k]));
-const ADMIN_ROUTE = { dashboard: 'visao-geral', calendar: 'cronograma', team: 'equipe', history: 'historico', bank: 'banco', notices: 'avisos', requests: 'solicitacoes', backup: 'backup' };
+const ADMIN_ROUTE = { dashboard: 'visao-geral', calendar: 'cronograma', team: 'equipe', history: 'historico', bank: 'banco', notices: 'avisos', requests: 'solicitacoes', agenda: 'agenda', backup: 'backup' };
 const ADMIN_TAB   = Object.fromEntries(Object.entries(ADMIN_ROUTE).map(([k, v]) => [v, k]));
 
 export const App = {
@@ -99,6 +99,7 @@ export const App = {
     if (view === 'free') {
       if (tab === 'today')    window.TodayCtrl.init(content);
       if (tab === 'schedule') window.ScheduleCtrl.init(content);
+      if (tab === 'agenda')   window.AgendaCtrl.init(content);
       if (tab === 'demands')  window.FreeDemandsCtrl.init(content);
       if (tab === 'ranking')  window.RankingCtrl.init(content);
     }
@@ -111,6 +112,7 @@ export const App = {
       if (tab === 'notices')   window.NoticesCtrl.init(content);
       if (tab === 'backup')    window.BackupCtrl.init(content);
       if (tab === 'requests')  window.RequestsCtrl.init(content);
+      if (tab === 'agenda')    window.AgendaCtrl.init(content);
     }
   },
 
@@ -135,6 +137,7 @@ export const App = {
           <div class="flex gap-1">
             ${btn('today',    'fa-calendar-day',   'Tarefas do Dia')}
             ${btn('schedule', 'fa-calendar-week',  'Cronograma')}
+            ${btn('agenda',   'fa-calendar-check', 'Agenda')}
             ${btn('demands',  'fa-layer-group',    'Banco de Demandas')}
             ${btn('ranking',  'fa-chart-line',     'Visão Geral')}
           </div>
@@ -163,6 +166,7 @@ export const App = {
           <nav class="flex-1 p-2 flex flex-col gap-0.5 overflow-y-auto">
             ${btn('dashboard', 'fa-gauge',             'Visão Geral')}
             ${btn('calendar', 'fa-calendar-alt',      'Cronograma')}
+            ${btn('agenda',   'fa-calendar-check',    'Agenda')}
             ${btn('team',     'fa-users',             'Equipe')}
             ${btn('history',  'fa-clock-rotate-left', 'Histórico')}
             ${btn('bank',     'fa-database',          'Banco & Estudos')}

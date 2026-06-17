@@ -1,5 +1,5 @@
 import { AppState } from '../../state.js';
-import { todayStr, toDateStr } from '../../utils/date.js';
+import { todayStr } from '../../utils/date.js';
 
 function fmtDate(str) {
   if (!str) return '';
@@ -13,13 +13,7 @@ function fmtShort(str) {
   return `${d}/${m}`;
 }
 
-function addDays(dateStr, n) {
-  const d = new Date(dateStr + 'T12:00:00');
-  d.setDate(d.getDate() + n);
-  return toDateStr(d);
-}
 
-const TYPE_LABEL  = { reuniao: 'Reunião', treinamento: 'Treinamento' };
 const DAY_NAMES   = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export const AdminDashCtrl = {
@@ -34,7 +28,6 @@ export const AdminDashCtrl = {
     const today      = todayStr();
     const dayOfWeek  = new Date(today + 'T12:00:00').getDay();
     const isWeekday  = dayOfWeek >= 1 && dayOfWeek <= 5;
-    const in7days    = addDays(today, 7);
 
     const { members, tasks, absences, requests } = AppState;
     const active = members.filter(m => m.active);
@@ -69,15 +62,6 @@ export const AdminDashCtrl = {
         overdueByMember[t.member_id] = { name: t.tb_aps_members?.name || '—', tasks: [] };
       overdueByMember[t.member_id].tasks.push(t);
     });
-
-    // Próximas reuniões e treinamentos (7 dias)
-    const upcoming = tasks
-      .filter(t => (t.type === 'reuniao' || t.type === 'treinamento')
-        && t.scheduled_date >= today && t.scheduled_date <= in7days)
-      .sort((a, b) => {
-        if (a.scheduled_date !== b.scheduled_date) return a.scheduled_date.localeCompare(b.scheduled_date);
-        return (a.event_time || '00:00').localeCompare(b.event_time || '00:00');
-      });
 
     // Reuniões/treinamentos com horário fora do turno informado
     const timeMismatch = tasks.filter(t => {
@@ -114,9 +98,8 @@ export const AdminDashCtrl = {
               ${this._cardAbsent(absentToday, active)}
               ${this._cardVacation(vacActive, vacExpired)}
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               ${this._cardOverdue(overdueByMember)}
-              ${this._cardUpcoming(upcoming)}
               ${this._cardTimeMismatch(timeMismatch)}
             </div>
           </div>
@@ -311,30 +294,5 @@ export const AdminDashCtrl = {
     return this._card('fa-clock', 'text-orange-400', 'Conflito Turno × Horário', badge, content);
   },
 
-  _cardUpcoming(upcoming) {
-    const content = upcoming.length === 0
-      ? this._empty('Nenhuma reunião ou treinamento nos próximos 7 dias.')
-      : `<div class="flex flex-col">
-           ${upcoming.map(t => `
-             <div class="flex items-center gap-3 py-2 border-b border-slate-700/50 last:border-0">
-               <div class="shrink-0 text-center w-10">
-                 <p class="text-xs font-bold text-primary">${fmtShort(t.scheduled_date)}</p>
-                 ${t.event_time ? `<p class="text-[10px] text-slate-500">${t.event_time}</p>` : ''}
-               </div>
-               <div class="flex-1 min-w-0">
-                 <p class="text-sm text-slate-200 truncate">${t.title}</p>
-                 <p class="text-[10px] text-slate-500">${t.tb_aps_members?.name || '—'}</p>
-               </div>
-               <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium
-                            ${t.type === 'reuniao' ? 'bg-violet-900/40 text-violet-300' : 'bg-teal-900/40 text-teal-300'}">
-                 ${TYPE_LABEL[t.type]}
-               </span>
-             </div>`).join('')}
-         </div>`;
-    const badge = upcoming.length > 0
-      ? { cls: 'bg-slate-700 text-slate-400', label: upcoming.length }
-      : null;
-    return this._card('fa-calendar-star', 'text-primary', 'Próximas Reuniões e Treinamentos', badge, content);
-  },
 };
 window.AdminDashCtrl = AdminDashCtrl;

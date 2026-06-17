@@ -31,6 +31,8 @@ export const CalendarCtrl = {
   _cellDate: null,
   _demands: [],
   _selectedDemandId: null,
+  _editGroup: false,
+  _editGroupId: null,
 
   init(container) {
     this._container = container;
@@ -359,7 +361,87 @@ export const CalendarCtrl = {
   },
 
   openEditForm(taskId) {
-    this._renderModalForm(taskId);
+    const task = AppState.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    if (task.group_id) {
+      this._showGroupEditConfirm(taskId, task.group_id);
+      return;
+    }
+    this._openEditModal(taskId, false);
+  },
+
+  _showGroupEditConfirm(taskId, groupId) {
+    document.getElementById('cal-delete-confirm')?.remove();
+    document.getElementById('cal-edit-confirm')?.remove();
+    const body = document.getElementById('cal-modal-body');
+    if (!body) return;
+    const groupCount = AppState.tasks.filter(t => t.group_id === groupId).length;
+    const el = document.createElement('div');
+    el.id = 'cal-edit-confirm';
+    el.className = 'mx-5 mt-4 mb-1 bg-slate-900 border border-violet-700/50 rounded-xl p-4 flex flex-col gap-3';
+    el.innerHTML = `
+      <div class="flex items-start gap-2">
+        <i class="fa-solid fa-pen text-violet-400 mt-0.5 shrink-0 text-sm"></i>
+        <div>
+          <p class="text-sm text-white font-medium">Este evento faz parte de um grupo</p>
+          <p class="text-xs text-slate-400 mt-0.5">${groupCount} tarefa${groupCount !== 1 ? 's' : ''} vinculada${groupCount !== 1 ? 's' : ''} pelo mesmo evento.</p>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <button onclick="CalendarCtrl._openEditModal('${taskId}', false)"
+          class="w-full px-3 py-2 rounded-lg text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors text-left flex items-center gap-2">
+          <i class="fa-solid fa-user text-slate-400 text-xs"></i>Editar só para este membro
+        </button>
+        <button onclick="CalendarCtrl._openEditModal('${taskId}', true)"
+          class="w-full px-3 py-2 rounded-lg text-sm bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 border border-violet-700/50 transition-colors text-left flex items-center gap-2">
+          <i class="fa-solid fa-users text-xs"></i>Editar para todos do grupo (${groupCount})
+        </button>
+        <button onclick="document.getElementById('cal-edit-confirm')?.remove()"
+          class="w-full px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-slate-300 transition-colors">
+          Cancelar
+        </button>
+      </div>`;
+    body.prepend(el);
+  },
+
+  _openEditModal(taskId, editGroup) {
+    const task   = AppState.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    this._editGroup   = editGroup;
+    this._editGroupId = editGroup ? task.group_id : null;
+    const member  = AppState.members.find(m => m.id === this._cellMemberId);
+    const [y, mo, d] = this._cellDate.split('-');
+    const dayName = DAY_NAMES[new Date(this._cellDate + 'T12:00:00').getDay() - 1] || '';
+    const subtitle = editGroup
+      ? `<span class="text-violet-400 flex items-center gap-1"><i class="fa-solid fa-users text-[10px]"></i>Todos do grupo</span>`
+      : `${member?.name} · ${dayName}, ${d}/${mo}/${y}`;
+
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="CalendarCtrl._backdropClick(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col"
+             onclick="event.stopPropagation()">
+          <div class="flex items-start justify-between p-5 border-b border-slate-700 shrink-0">
+            <div class="flex items-center gap-3">
+              <button onclick="CalendarCtrl.openCell('${this._cellMemberId}','${this._cellDate}')"
+                class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+              </button>
+              <div>
+                <h3 class="font-bold text-white">Editar tarefa</h3>
+                <p class="text-slate-400 text-sm mt-0.5">${subtitle}</p>
+              </div>
+            </div>
+            <button onclick="CalendarCtrl.closeCell()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="p-5 overflow-y-auto flex-1">
+            ${this._editFormHTML(task)}
+          </div>
+        </div>
+      </div>`;
   },
 
   backToList() {
@@ -448,8 +530,10 @@ export const CalendarCtrl = {
   },
 
   _taskFormFields(prefix = '', task = null) {
-    const pid      = prefix ? `${prefix}-` : '';
-    const needTime = task?.type === 'treinamento' || task?.type === 'reuniao';
+    const pid        = prefix ? `${prefix}-` : '';
+    const needTime   = task?.type === 'treinamento' || task?.type === 'reuniao';
+    const isNew      = !task;
+    const activeMembers = isNew ? AppState.members.filter(m => m.active) : [];
     return `
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -486,7 +570,31 @@ export const CalendarCtrl = {
           class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
                  focus:outline-none focus:border-primary transition-colors"
           ${needTime ? 'required' : ''}>
-      </div>`;
+      </div>
+      ${isNew ? `
+      <div id="${pid}cal-members-wrap" class="hidden">
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-xs text-slate-400">Participantes</label>
+          <div class="flex gap-2">
+            <button type="button" onclick="CalendarCtrl.toggleAllMembers('${pid}', true)"
+              class="text-[10px] text-primary hover:text-violet-300 transition-colors">Selecionar todos</button>
+            <span class="text-slate-600 text-[10px]">|</span>
+            <button type="button" onclick="CalendarCtrl.toggleAllMembers('${pid}', false)"
+              class="text-[10px] text-slate-400 hover:text-slate-200 transition-colors">Desmarcar todos</button>
+          </div>
+        </div>
+        <div class="flex flex-col gap-0.5 max-h-36 overflow-y-auto bg-slate-700/50 border border-slate-600 rounded-lg p-1.5">
+          ${activeMembers.map(m => `
+            <label class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-600/50 cursor-pointer select-none
+                          ${m.id === this._cellMemberId ? 'opacity-60 cursor-default' : ''}">
+              <input type="checkbox" value="${m.id}"
+                ${m.id === this._cellMemberId ? 'checked disabled' : ''}
+                class="accent-primary shrink-0">
+              <span class="text-sm text-slate-300 truncate">${m.name}</span>
+              ${m.id === this._cellMemberId ? '<span class="text-[10px] text-slate-500 ml-auto shrink-0">este membro</span>' : ''}
+            </label>`).join('')}
+        </div>
+      </div>` : ''}`;
   },
 
   _demandSection(label, icon, color, items) {
@@ -583,6 +691,7 @@ export const CalendarCtrl = {
     const needs = type === 'treinamento' || type === 'reuniao';
     wrap?.classList.toggle('hidden', !needs);
     if (input) input.required = needs;
+    document.getElementById(`${prefix}cal-members-wrap`)?.classList.toggle('hidden', !needs);
   },
 
   closeCell() {
@@ -604,22 +713,29 @@ export const CalendarCtrl = {
     const time     = !timeWrap?.classList.contains('hidden')
       ? document.getElementById(`${pid}cal-time`)?.value
       : null;
+    const membersWrap = document.getElementById(`${pid}cal-members-wrap`);
+    let memberIds = [this._cellMemberId];
+    if (membersWrap && !membersWrap.classList.contains('hidden')) {
+      const checked = membersWrap.querySelectorAll('input[type="checkbox"]:checked');
+      memberIds = [...new Set([this._cellMemberId, ...Array.from(checked).map(cb => cb.value)])];
+    }
     return {
       priority: document.getElementById(`${pid}cal-priority`)?.value,
       shift:    document.getElementById(`${pid}cal-shift`)?.value,
       type,
       time,
+      memberIds,
     };
   },
 
   async addTask(e) {
     e.preventDefault();
     const title = document.getElementById('cal-title').value.trim();
-    const { priority, shift, type, time } = this._getFormValues();
+    const { priority, shift, type, time, memberIds } = this._getFormValues();
     if ((type === 'treinamento' || type === 'reuniao') && !time) {
       window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
     }
-    await this._saveTask({ title, priority, shift, type, time, demandId: null });
+    await this._saveTask({ title, priority, shift, type, time, demandId: null, memberIds });
   },
 
   async addTaskFromBank(e) {
@@ -628,27 +744,32 @@ export const CalendarCtrl = {
       window.Toast.show('Selecione uma demanda do banco.', 'warning'); return;
     }
     const demand = this._demands.find(d => d.id === this._selectedDemandId);
-    const { priority, shift, type, time } = this._getFormValues('bank');
+    const { priority, shift, type, time, memberIds } = this._getFormValues('bank');
     if ((type === 'treinamento' || type === 'reuniao') && !time) {
       window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
     }
-    await this._saveTask({ title: demand.title, priority, shift, type, time, demandId: this._selectedDemandId });
+    await this._saveTask({ title: demand.title, priority, shift, type, time, demandId: this._selectedDemandId, memberIds });
   },
 
-  async _saveTask({ title, priority, shift, type, time, demandId }) {
-    const row = {
+  async _saveTask({ title, priority, shift, type, time, demandId, memberIds }) {
+    memberIds = memberIds?.length ? memberIds : [this._cellMemberId];
+    const grupoId = memberIds.length > 1 ? window.App.generateId() : null;
+
+    const rows = memberIds.map(mid => ({
       id:             window.App.generateId(),
       title,
-      member_id:      this._cellMemberId,
+      member_id:      mid,
       scheduled_date: this._cellDate,
       priority,
       shift,
       type,
       event_time:     time || null,
       demand_id:      demandId || null,
+      group_id:       grupoId,
       status:         'pending',
-    };
-    const { error } = await db.from('tb_aps_tasks').insert(row);
+    }));
+
+    const { error } = await db.from('tb_aps_tasks').insert(rows);
     if (error) { window.Toast.show('Erro ao salvar tarefa.', 'error'); return; }
 
     const { data } = await db.from('tb_aps_tasks')
@@ -659,7 +780,7 @@ export const CalendarCtrl = {
 
     this._render();
     this._renderModalList();
-    window.Toast.show('Tarefa adicionada.', 'success');
+    window.Toast.show(rows.length > 1 ? `Evento criado para ${rows.length} membros.` : 'Tarefa adicionada.', 'success');
   },
 
   async updateTask(e, taskId) {
@@ -669,26 +790,92 @@ export const CalendarCtrl = {
     if ((type === 'treinamento' || type === 'reuniao') && !time) {
       window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
     }
-    const { error } = await db.from('tb_aps_tasks')
-      .update({ title, priority, shift, type, event_time: time || null })
-      .eq('id', taskId);
+    const patch = { title, priority, shift, type, event_time: time || null };
+    const query = this._editGroup && this._editGroupId
+      ? db.from('tb_aps_tasks').update(patch).eq('group_id', this._editGroupId)
+      : db.from('tb_aps_tasks').update(patch).eq('id', taskId);
+    const { error } = await query;
     if (error) { window.Toast.show('Erro ao salvar.', 'error'); return; }
 
-    setAppState({ tasks: AppState.tasks.map(t =>
-      t.id === taskId ? { ...t, title, priority, shift, type, event_time: time || null } : t
-    )});
+    setAppState({
+      tasks: AppState.tasks.map(t =>
+        (this._editGroup && this._editGroupId ? t.group_id === this._editGroupId : t.id === taskId)
+          ? { ...t, ...patch }
+          : t
+      ),
+    });
     this._render();
-    this._renderModalList();
-    window.Toast.show('Tarefa atualizada.', 'success');
+    const msg = this._editGroup ? 'Evento atualizado para todos do grupo.' : 'Tarefa atualizada.';
+    window.Toast.show(msg, 'success');
+    this.openCell(this._cellMemberId, this._cellDate);
   },
 
-  async deleteTask(taskId) {
+  deleteTask(taskId) {
+    const task = AppState.tasks.find(t => t.id === taskId);
+    if (task?.group_id) {
+      this._showGroupDeleteConfirm(taskId, task.group_id);
+      return;
+    }
+    this._doDeleteSingle(taskId);
+  },
+
+  _showGroupDeleteConfirm(taskId, grupoId) {
+    document.getElementById('cal-delete-confirm')?.remove();
+    const body = document.getElementById('cal-modal-body');
+    if (!body) return;
+    const groupCount = AppState.tasks.filter(t => t.group_id === grupoId).length;
+    const confirm = document.createElement('div');
+    confirm.id = 'cal-delete-confirm';
+    confirm.className = 'mx-5 mt-4 mb-1 bg-slate-900 border border-rose-700/50 rounded-xl p-4 flex flex-col gap-3';
+    confirm.innerHTML = `
+      <div class="flex items-start gap-2">
+        <i class="fa-solid fa-triangle-exclamation text-rose-400 mt-0.5 shrink-0 text-sm"></i>
+        <div>
+          <p class="text-sm text-white font-medium">Este evento faz parte de um grupo</p>
+          <p class="text-xs text-slate-400 mt-0.5">${groupCount} tarefa${groupCount !== 1 ? 's' : ''} vinculada${groupCount !== 1 ? 's' : ''} pelo mesmo evento.</p>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2">
+        <button onclick="CalendarCtrl._doDeleteSingle('${taskId}')"
+          class="w-full px-3 py-2 rounded-lg text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors text-left flex items-center gap-2">
+          <i class="fa-solid fa-user text-slate-400 text-xs"></i>Excluir só para este membro
+        </button>
+        <button onclick="CalendarCtrl._doDeleteGroup('${grupoId}')"
+          class="w-full px-3 py-2 rounded-lg text-sm bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-700/50 transition-colors text-left flex items-center gap-2">
+          <i class="fa-solid fa-users text-xs"></i>Excluir para todos do grupo (${groupCount})
+        </button>
+        <button onclick="document.getElementById('cal-delete-confirm')?.remove()"
+          class="w-full px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-slate-300 transition-colors">
+          Cancelar
+        </button>
+      </div>`;
+    body.prepend(confirm);
+  },
+
+  async _doDeleteSingle(taskId) {
     const { error } = await db.from('tb_aps_tasks').delete().eq('id', taskId);
     if (error) { window.Toast.show('Erro ao excluir.', 'error'); return; }
     setAppState({ tasks: AppState.tasks.filter(t => t.id !== taskId) });
     this._render();
     this._renderModalList();
     window.Toast.show('Tarefa removida.', 'info');
+  },
+
+  async _doDeleteGroup(grupoId) {
+    const { error } = await db.from('tb_aps_tasks').delete().eq('group_id', grupoId);
+    if (error) { window.Toast.show('Erro ao excluir.', 'error'); return; }
+    setAppState({ tasks: AppState.tasks.filter(t => t.group_id !== grupoId) });
+    this._render();
+    this._renderModalList();
+    window.Toast.show('Evento removido para todos do grupo.', 'info');
+  },
+
+  toggleAllMembers(pid, select) {
+    const wrap = document.getElementById(`${pid}cal-members-wrap`);
+    if (!wrap) return;
+    wrap.querySelectorAll('input[type="checkbox"]:not([disabled])').forEach(cb => {
+      cb.checked = select;
+    });
   },
 };
 window.CalendarCtrl = CalendarCtrl;
