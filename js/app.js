@@ -1,7 +1,7 @@
 import { db } from './db.js';
 import { AppState, setAppState } from './state.js';
 
-export const VERSION = 'v1.1';
+export const VERSION = 'v1.2';
 
 const FREE_ROUTE  = { today: 'hoje', schedule: 'cronograma', demands: 'demandas', ranking: 'ranking', agenda: 'agenda' };
 const FREE_TAB    = Object.fromEntries(Object.entries(FREE_ROUTE).map(([k, v]) => [v, k]));

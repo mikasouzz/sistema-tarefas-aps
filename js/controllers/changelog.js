@@ -2,6 +2,51 @@ import { VERSION } from '../app.js';
 
 const RELEASES = [
   {
+    version: 'v1.2',
+    date: 'Junho 2026',
+    label: 'Agenda e eventos em grupo',
+    sections: [
+      {
+        title: 'Acesso Sistema',
+        icon: 'fa-eye',
+        color: 'text-accent',
+        items: [
+          {
+            name: 'Agenda semanal',
+            desc: 'Nova tela com visão da semana de reuniões e treinamentos, separados por turno (Manhã, Tarde, Livre). Cards agrupam membros do mesmo evento. Navegação por semana com seletor de data.',
+          },
+          {
+            name: 'Solicitar inserção de tarefa',
+            desc: 'Membros podem solicitar a inclusão de uma nova tarefa informando título, tipo, turno, prioridade, data, horário (para reuniões e treinamentos) e justificativa. A solicitação aparece no painel de supervisão até ser aceita ou recusada.',
+          },
+        ],
+      },
+      {
+        title: 'Acesso Supervisão',
+        icon: 'fa-lock',
+        color: 'text-primary',
+        items: [
+          {
+            name: 'Eventos em grupo',
+            desc: 'Reuniões e treinamentos podem ser criados para múltiplos membros de uma vez. Cada membro recebe uma cópia independente da tarefa; todas compartilham um identificador de grupo para agrupamento na Agenda.',
+          },
+          {
+            name: 'Editar e excluir evento em grupo',
+            desc: 'Ao editar ou excluir uma tarefa que faz parte de um grupo, a supervisão pode escolher aplicar a ação somente para o membro atual ou para todos os participantes do grupo.',
+          },
+          {
+            name: 'Solicitações de inserção',
+            desc: 'Nova aba "Inserção" no painel de Solicitações exibe pedidos de nova tarefa enviados pela equipe. Aceitar cria a tarefa no cronograma do membro; recusar descarta a solicitação.',
+          },
+          {
+            name: 'Modal de edição dedicado',
+            desc: 'Editar uma tarefa no Cronograma abre um modal próprio (mesmo padrão visual do modal de célula), separado da lista de tarefas do dia.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: 'v1.1',
     date: 'Junho 2026',
     label: 'Gestão da equipe',

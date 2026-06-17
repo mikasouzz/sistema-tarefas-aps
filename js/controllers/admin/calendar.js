@@ -367,7 +367,7 @@ export const CalendarCtrl = {
       this._showGroupEditConfirm(taskId, task.group_id);
       return;
     }
-    this._openEditModal(taskId, false);
+    this._renderModalForm(taskId, false);
   },
 
   _showGroupEditConfirm(taskId, groupId) {
@@ -388,11 +388,11 @@ export const CalendarCtrl = {
         </div>
       </div>
       <div class="flex flex-col gap-2">
-        <button onclick="CalendarCtrl._openEditModal('${taskId}', false)"
+        <button onclick="CalendarCtrl._renderModalForm('${taskId}', false)"
           class="w-full px-3 py-2 rounded-lg text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors text-left flex items-center gap-2">
           <i class="fa-solid fa-user text-slate-400 text-xs"></i>Editar só para este membro
         </button>
-        <button onclick="CalendarCtrl._openEditModal('${taskId}', true)"
+        <button onclick="CalendarCtrl._renderModalForm('${taskId}', true)"
           class="w-full px-3 py-2 rounded-lg text-sm bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 border border-violet-700/50 transition-colors text-left flex items-center gap-2">
           <i class="fa-solid fa-users text-xs"></i>Editar para todos do grupo (${groupCount})
         </button>
@@ -404,56 +404,24 @@ export const CalendarCtrl = {
     body.prepend(el);
   },
 
-  _openEditModal(taskId, editGroup) {
-    const task   = AppState.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    this._editGroup   = editGroup;
-    this._editGroupId = editGroup ? task.group_id : null;
-    const member  = AppState.members.find(m => m.id === this._cellMemberId);
-    const [y, mo, d] = this._cellDate.split('-');
-    const dayName = DAY_NAMES[new Date(this._cellDate + 'T12:00:00').getDay() - 1] || '';
-    const subtitle = editGroup
-      ? `<span class="text-violet-400 flex items-center gap-1"><i class="fa-solid fa-users text-[10px]"></i>Todos do grupo</span>`
-      : `${member?.name} · ${dayName}, ${d}/${mo}/${y}`;
-
-    document.getElementById('modal-container').innerHTML = `
-      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
-           onclick="CalendarCtrl._backdropClick(event)">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col"
-             onclick="event.stopPropagation()">
-          <div class="flex items-start justify-between p-5 border-b border-slate-700 shrink-0">
-            <div class="flex items-center gap-3">
-              <button onclick="CalendarCtrl.openCell('${this._cellMemberId}','${this._cellDate}')"
-                class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
-                <i class="fa-solid fa-arrow-left text-xs"></i>
-              </button>
-              <div>
-                <h3 class="font-bold text-white">Editar tarefa</h3>
-                <p class="text-slate-400 text-sm mt-0.5">${subtitle}</p>
-              </div>
-            </div>
-            <button onclick="CalendarCtrl.closeCell()"
-              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
-          <div class="p-5 overflow-y-auto flex-1">
-            ${this._editFormHTML(task)}
-          </div>
-        </div>
-      </div>`;
-  },
-
   backToList() {
     this._selectedDemandId = null;
     this._renderModalList();
   },
 
-  _renderModalForm(taskId) {
+  _renderModalForm(taskId, editGroup = false) {
     const task   = taskId ? AppState.tasks.find(t => t.id === taskId) : null;
     const isEdit = !!task;
+    this._editGroup   = isEdit ? editGroup : false;
+    this._editGroupId = isEdit && editGroup ? task.group_id : null;
     const body   = document.getElementById('cal-modal-body');
     if (!body) return;
+
+    const title = isEdit
+      ? (editGroup
+          ? `Editar tarefa <span class="text-xs font-normal text-violet-400 ml-1"><i class="fa-solid fa-users text-[10px]"></i> todos do grupo</span>`
+          : 'Editar tarefa')
+      : 'Nova tarefa';
 
     body.innerHTML = `
       <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700">
@@ -461,7 +429,7 @@ export const CalendarCtrl = {
           class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
           <i class="fa-solid fa-arrow-left text-xs"></i>
         </button>
-        <p class="text-sm font-semibold text-white">${isEdit ? 'Editar tarefa' : 'Nova tarefa'}</p>
+        <p class="text-sm font-semibold text-white">${title}</p>
       </div>
       <div class="p-5">
         ${isEdit ? this._editFormHTML(task) : this._addFormHTML()}
@@ -807,7 +775,7 @@ export const CalendarCtrl = {
     this._render();
     const msg = this._editGroup ? 'Evento atualizado para todos do grupo.' : 'Tarefa atualizada.';
     window.Toast.show(msg, 'success');
-    this.openCell(this._cellMemberId, this._cellDate);
+    this._renderModalList();
   },
 
   deleteTask(taskId) {
