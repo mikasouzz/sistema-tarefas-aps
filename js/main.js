@@ -9,6 +9,7 @@ import './controllers/free/today.js';
 import './controllers/free/schedule.js';
 import './controllers/free/demands.js';
 import './controllers/free/ranking.js';
+import './controllers/free/game.js';
 
 // Admin view controllers
 import './controllers/admin/dashboard.js';

@@ -14,7 +14,7 @@ export const App = {
   },
 
   async loadData() {
-    const [mRes, tRes, nRes, aRes, rRes, iRes] = await Promise.all([
+    const [mRes, tRes, nRes, aRes, rRes, iRes, gRes] = await Promise.all([
       db.from('tb_aps_members').select('*').order('name'),
       db.from('tb_aps_tasks')
         .select('*, tb_aps_members(name, role)')
@@ -24,6 +24,7 @@ export const App = {
       db.from('tb_aps_absences').select('*'),
       db.from('tb_aps_task_requests').select('*').order('created_at', { ascending: false }),
       db.from('tb_aps_task_insert_requests').select('*').order('created_at', { ascending: false }),
+      db.from('tb_aps_game_scores').select('*').order('created_at', { ascending: false }),
     ]);
     if (mRes.error) window.Toast?.show('Erro ao carregar membros.', 'error');
     if (tRes.error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
@@ -34,6 +35,7 @@ export const App = {
       absences:       aRes.data || [],
       requests:       rRes.data || [],
       insertRequests: iRes.data || [],
+      gameScores:     gRes.data || [],
     });
   },
 

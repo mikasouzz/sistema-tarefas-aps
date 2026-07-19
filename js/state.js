@@ -10,6 +10,7 @@ export let AppState = {
   absences: [],
   requests: [],
   insertRequests: [],
+  gameScores: [],
   isAdmin: false,
   selectedWeekStart: getMondayOf(new Date()),
   selectedMemberId: null,
