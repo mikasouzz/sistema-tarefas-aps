@@ -146,7 +146,7 @@ export const TodayCtrl = {
           ${this._indicatorCards()}
 
           <div class="flex-1 overflow-y-auto pr-1">
-            <div class="flex flex-col gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
               ${groups.map(g => this._memberRow(g)).join('')}
             </div>
           </div>
@@ -234,18 +234,19 @@ export const TodayCtrl = {
 
     return `
       <button onclick="TodayCtrl._openMemberModal('${group.memberId}')"
-        class="w-full bg-slate-800 border ${borderClass} hover:border-primary/60 rounded-xl px-4 py-3 flex items-center gap-3 transition-colors text-left">
-        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0
-                    ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
-          ${allDone ? '<i class="fa-solid fa-check text-xs"></i>' : initial}
+        class="bg-slate-800 border ${borderClass} hover:border-primary/60 rounded-xl px-3 py-4 flex flex-col items-center gap-2 transition-colors text-center">
+        <div class="relative">
+          <div class="w-11 h-11 rounded-full flex items-center justify-center font-bold text-base shrink-0
+                      ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
+            ${allDone ? '<i class="fa-solid fa-check text-sm"></i>' : initial}
+          </div>
+          ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-xs absolute -top-1 -right-1 bg-slate-800 rounded-full p-0.5"></i>' : ''}
+          ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-xs absolute -top-1 -right-1 bg-slate-800 rounded-full p-0.5"></i>' : ''}
         </div>
-        <div class="min-w-0 flex-1">
+        <div class="min-w-0 w-full">
           <p class="font-semibold text-white text-sm truncate">${group.name}</p>
-          <p class="text-xs text-slate-400">${doneCount} de ${total} concluída${total !== 1 ? 's' : ''}</p>
+          <p class="text-xs text-slate-400">${doneCount} de ${total}</p>
         </div>
-        ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-sm shrink-0"></i>' : ''}
-        ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-sm shrink-0"></i>' : ''}
-        <i class="fa-solid fa-chevron-right text-slate-600 text-xs shrink-0"></i>
       </button>`;
   },
 
