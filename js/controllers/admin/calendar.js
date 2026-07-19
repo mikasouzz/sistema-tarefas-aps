@@ -215,6 +215,24 @@ export const CalendarCtrl = {
     if (document.getElementById('cal-modal-body')) this._renderModalList();
   },
 
+  async completeAll() {
+    const pendingIds = AppState.tasks
+      .filter(t => t.member_id === this._cellMemberId && t.scheduled_date === this._cellDate && t.status !== 'done')
+      .map(t => t.id);
+    if (pendingIds.length === 0) return;
+
+    const { error } = await db.from('tb_aps_tasks').update({ status: 'done' }).in('id', pendingIds);
+    if (error) { window.Toast.show('Erro ao atualizar.', 'error'); return; }
+
+    pendingIds.forEach(id => {
+      const task = AppState.tasks.find(t => t.id === id);
+      if (task) task.status = 'done';
+    });
+    this._render();
+    if (document.getElementById('cal-modal-body')) this._renderModalList();
+    window.Toast.show('Tarefas concluídas!', 'success');
+  },
+
   shiftWeek(delta) {
     const d = new Date(AppState.selectedWeekStart);
     d.setDate(d.getDate() + delta * 7);
@@ -300,7 +318,12 @@ export const CalendarCtrl = {
       <div class="p-5 flex flex-col gap-2">
         ${existing.length === 0
           ? `<p class="text-slate-500 text-sm text-center py-6">Nenhuma tarefa neste dia.</p>`
-          : existing.map(t => {
+          : `${existing.some(t => t.status !== 'done') ? `
+          <button onclick="CalendarCtrl.completeAll()"
+            class="w-full flex items-center justify-center gap-2 mb-1 bg-accent/10 hover:bg-accent/20 border border-accent/30
+                   text-accent rounded-lg py-2 text-sm font-medium transition-colors">
+            <i class="fa-solid fa-check-double text-xs"></i>Concluir todas
+          </button>` : ''}` + existing.map(t => {
               const taskReq = AppState.requests?.find(r => r.task_id === t.id);
               return `
               <div class="flex items-center gap-2 bg-slate-700/60 border ${taskReq ? 'border-rose-700/50' : 'border-slate-600'} rounded-lg px-3 py-2.5 ${taskReq ? 'opacity-60' : ''}">

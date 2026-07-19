@@ -203,6 +203,11 @@ export const TodayCtrl = {
             ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-sm shrink-0"></i>' : ''}
             ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-sm shrink-0"></i>' : ''}
           </div>
+          ${!allDone ? `
+          <button onclick="TodayCtrl.completeAllForMember('${group.memberId}')"
+            class="w-full py-1.5 flex items-center justify-center gap-1.5 text-xs font-medium bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent rounded-lg transition-colors">
+            <i class="fa-solid fa-check-double text-[10px]"></i> Concluir todas
+          </button>` : ''}
           <button onclick="TodayCtrl._openInsertModal('${group.memberId}')"
             class="w-full py-1.5 flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-primary border border-dashed border-slate-700 hover:border-primary/50 rounded-lg transition-colors">
             <i class="fa-solid fa-plus text-[10px]"></i> Solicitar nova tarefa
@@ -515,6 +520,23 @@ export const TodayCtrl = {
     if (task) task.status = next;
     this._render();
     window.Toast.show(next === 'done' ? 'Tarefa concluída!' : 'Tarefa reaberta.', next === 'done' ? 'success' : 'info');
+  },
+
+  async completeAllForMember(memberId) {
+    const pendingIds = this.tasks
+      .filter(t => t.member_id === memberId && t.status !== 'done')
+      .map(t => t.id);
+    if (pendingIds.length === 0) return;
+
+    const { error } = await db.from('tb_aps_tasks').update({ status: 'done' }).in('id', pendingIds);
+    if (error) { window.Toast.show('Erro ao atualizar.', 'error'); return; }
+
+    pendingIds.forEach(id => {
+      const task = this.tasks.find(t => t.id === id);
+      if (task) task.status = 'done';
+    });
+    this._render();
+    window.Toast.show('Tarefas concluídas!', 'success');
   },
 
   showTime(time, label) {
