@@ -39,6 +39,8 @@ create table if not exists tb_aps_tasks (
 -- ALTER TABLE tb_aps_tasks ADD COLUMN IF NOT EXISTS group_id TEXT;
 -- ALTER TABLE tb_aps_tasks ADD COLUMN IF NOT EXISTS event_color TEXT;
 -- ALTER TABLE tb_aps_task_insert_requests ADD COLUMN IF NOT EXISTS event_color TEXT;
+-- ALTER TABLE tb_aps_task_insert_requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+-- UPDATE tb_aps_task_insert_requests SET status = 'pending' WHERE status IS NULL;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS on_vacation BOOLEAN DEFAULT false;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_start TEXT;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_end TEXT;
@@ -84,6 +86,7 @@ create table if not exists tb_aps_task_insert_requests (
   event_time     text,            -- 'HH:MM'
   event_color    text,            -- 'rosa' | 'azul' | 'amarelo' | 'cinza' — apenas treinamento/reunião
   justification  text,
+  status         text default 'pending',  -- 'pending' | 'accepted' | 'rejected'
   created_at     timestamptz default now()
 );
 

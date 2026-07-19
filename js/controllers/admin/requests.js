@@ -5,6 +5,12 @@ const SHIFT_LABEL    = { manha: 'Manhã', tarde: 'Tarde', livre: 'Livre' };
 const TYPE_LABEL     = { operacional: 'Operacional', analitica: 'Analítica', estrategia: 'Estratégia', treinamento: 'Treinamento', reuniao: 'Reunião', suporte: 'Suporte' };
 const PRIORITY_LABEL = { principal: 'Principal', secundaria: 'Secundária' };
 
+const STATUS_LABEL = {
+  pending:  'Pendente',
+  accepted: 'Aceita',
+  rejected: 'Recusada',
+};
+
 export const RequestsCtrl = {
   _container: null,
   _activeTab: 'removal',
@@ -16,7 +22,9 @@ export const RequestsCtrl = {
 
   _render() {
     const removals   = AppState.requests;
-    const insertions = AppState.insertRequests;
+    const insertions = AppState.insertRequests.filter(r => (r.status || 'pending') === 'pending');
+    const history     = AppState.insertRequests.filter(r => (r.status || 'pending') !== 'pending')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     this._container.innerHTML = `
       <div class="flex-1 flex flex-col min-h-0">
@@ -37,10 +45,17 @@ export const RequestsCtrl = {
             Inserção
             ${insertions.length > 0 ? `<span class="ml-1.5 bg-primary/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">${insertions.length}</span>` : ''}
           </button>
+          <button onclick="RequestsCtrl._setTab('history')"
+            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px
+                   ${this._activeTab === 'history' ? 'border-primary text-white' : 'border-transparent text-slate-400 hover:text-white'}">
+            Histórico
+          </button>
         </div>
 
         <div class="flex-1 min-h-0 overflow-y-auto">
-          ${this._activeTab === 'removal' ? this._removalList(removals) : this._insertionList(insertions)}
+          ${this._activeTab === 'removal'   ? this._removalList(removals)
+            : this._activeTab === 'insertion' ? this._insertionList(insertions)
+            : this._historyList(history)}
         </div>
       </div>`;
   },
@@ -68,6 +83,34 @@ export const RequestsCtrl = {
       </div>`;
     }
     return `<div class="flex flex-col gap-3 max-w-2xl">${requests.map(r => this._cardInsertion(r)).join('')}</div>`;
+  },
+
+  _historyList(requests) {
+    if (requests.length === 0) {
+      return `<div class="text-center py-16 text-slate-500">
+        <i class="fa-solid fa-clock-rotate-left text-4xl mb-3 block opacity-30"></i>
+        <p>Nenhuma solicitação de inserção respondida ainda.</p>
+      </div>`;
+    }
+    return `<div class="flex flex-col gap-2 max-w-2xl">${requests.map(r => this._cardHistory(r)).join('')}</div>`;
+  },
+
+  _cardHistory(r) {
+    const sentAt = new Date(r.created_at).toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const isAccepted = r.status === 'accepted';
+    return `
+      <div class="bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-sm text-white font-medium truncate">${r.title}</p>
+          <p class="text-xs text-slate-500 mt-0.5">${r.member_name} · ${sentAt}</p>
+        </div>
+        <span class="shrink-0 text-xs px-2 py-0.5 rounded-full border flex items-center gap-1
+                     ${isAccepted ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-slate-700 border-slate-600 text-slate-400'}">
+          <i class="fa-solid ${isAccepted ? 'fa-check' : 'fa-xmark'} text-[10px]"></i> ${STATUS_LABEL[r.status] || r.status}
+        </span>
+      </div>`;
   },
 
   _cardRemoval(r) {
@@ -207,13 +250,13 @@ export const RequestsCtrl = {
     const { error: taskErr } = await db.from('tb_aps_tasks').insert(taskPayload);
     if (taskErr) { window.Toast.show('Erro ao criar tarefa.', 'error'); return; }
 
-    const { error: delErr } = await db.from('tb_aps_task_insert_requests').delete().eq('id', requestId);
-    if (delErr) { window.Toast.show('Erro ao remover solicitação.', 'error'); return; }
+    const { error: updErr } = await db.from('tb_aps_task_insert_requests').update({ status: 'accepted' }).eq('id', requestId);
+    if (updErr) { window.Toast.show('Erro ao atualizar solicitação.', 'error'); return; }
 
     const member = AppState.members.find(m => m.id === r.member_id);
     setAppState({
       tasks:          [...AppState.tasks, { ...taskPayload, tb_aps_members: { name: r.member_name, role: member?.role } }],
-      insertRequests: AppState.insertRequests.filter(req => req.id !== requestId),
+      insertRequests: AppState.insertRequests.map(req => req.id === requestId ? { ...req, status: 'accepted' } : req),
     });
 
     window.Toast.show('Tarefa criada com sucesso.', 'success');
@@ -222,9 +265,9 @@ export const RequestsCtrl = {
   },
 
   async rejectInsert(requestId) {
-    const { error } = await db.from('tb_aps_task_insert_requests').delete().eq('id', requestId);
+    const { error } = await db.from('tb_aps_task_insert_requests').update({ status: 'rejected' }).eq('id', requestId);
     if (error) { window.Toast.show('Erro ao recusar solicitação.', 'error'); return; }
-    setAppState({ insertRequests: AppState.insertRequests.filter(r => r.id !== requestId) });
+    setAppState({ insertRequests: AppState.insertRequests.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r) });
     window.Toast.show('Solicitação recusada.', 'info');
     this._render();
     window.App.refreshRequestsBadge();

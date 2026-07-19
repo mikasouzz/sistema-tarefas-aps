@@ -8,6 +8,11 @@ const FREE_TAB    = Object.fromEntries(Object.entries(FREE_ROUTE).map(([k, v]) =
 const ADMIN_ROUTE = { dashboard: 'visao-geral', calendar: 'cronograma', team: 'equipe', history: 'historico', bank: 'banco', notices: 'avisos', requests: 'solicitacoes', agenda: 'agenda', backup: 'backup' };
 const ADMIN_TAB   = Object.fromEntries(Object.entries(ADMIN_ROUTE).map(([k, v]) => [v, k]));
 
+function pendingRequestsCount() {
+  const pendingInserts = AppState.insertRequests.filter(r => (r.status || 'pending') === 'pending').length;
+  return AppState.requests.length + pendingInserts;
+}
+
 export const App = {
   generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -174,7 +179,7 @@ export const App = {
             ${btn('notices',  'fa-bell',              'Avisos')}
             <div id="requests-badge-wrap" class="relative">
               ${btn('requests', 'fa-inbox', 'Solicitações')}
-              ${(AppState.requests.length + AppState.insertRequests.length) > 0 ? `<span id="requests-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1">${AppState.requests.length + AppState.insertRequests.length}</span>` : ''}
+              ${pendingRequestsCount() > 0 ? `<span id="requests-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1">${pendingRequestsCount()}</span>` : ''}
             </div>
             ${btn('history',  'fa-clock-rotate-left', 'Histórico')}
             ${btn('backup',   'fa-box-archive',       'Backup')}
@@ -197,7 +202,7 @@ export const App = {
   refreshRequestsBadge() {
     const wrap = document.getElementById('requests-badge-wrap');
     if (!wrap) return;
-    const count   = AppState.requests.length + AppState.insertRequests.length;
+    const count   = pendingRequestsCount();
     const cls     = 'absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1';
     let badge     = document.getElementById('requests-badge');
     if (count > 0) {

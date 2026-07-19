@@ -302,7 +302,7 @@ export const TodayCtrl = {
     const doneCount = group.tasks.filter(t => t.status === 'done').length;
     const allDone   = doneCount === total;
 
-    const pendingInserts = AppState.insertRequests.filter(r => r.member_id === memberId).length;
+    const pendingInserts = AppState.insertRequests.filter(r => r.member_id === memberId && (r.status || 'pending') === 'pending').length;
 
     return `
         <div class="px-4 py-3 border-b ${dividerClass} flex flex-col gap-2">
