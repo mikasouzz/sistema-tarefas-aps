@@ -25,6 +25,11 @@ const SHIFT_HTML = {
   tarde: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-orange-400/20 text-orange-400"><i class="fa-solid fa-cloud-sun text-xs"></i>Tarde</span>',
   livre: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-teal-400/20 text-teal-400"><i class="fa-solid fa-clock text-xs"></i>Livre</span>',
 };
+const INDICATOR_TYPES = [
+  { type: 'suporte',     label: 'Suporte',      icon: 'fa-headset',         iconClass: 'bg-cyan-900/50 border-cyan-700 text-cyan-300' },
+  { type: 'treinamento', label: 'Treinamentos', icon: 'fa-chalkboard-user', iconClass: 'bg-emerald-900/50 border-emerald-700 text-emerald-300' },
+  { type: 'reuniao',     label: 'Reuniões',     icon: 'fa-users',           iconClass: 'bg-rose-900/50 border-rose-700 text-rose-300' },
+];
 
 export const TodayCtrl = {
   tasks: [],
@@ -137,6 +142,8 @@ export const TodayCtrl = {
             </p>
           </div>
 
+          ${this._indicatorCards()}
+
           <div class="flex-1 overflow-y-auto pr-1">
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               ${groups.map(g => this._memberPanel(g)).join('')}
@@ -147,6 +154,48 @@ export const TodayCtrl = {
         <!-- Avisos -->
         ${this._noticesPanel()}
 
+      </div>`;
+  },
+
+  _indicatorCards() {
+    const counts = {};
+    for (const { type } of INDICATOR_TYPES) counts[type] = { manha: 0, tarde: 0, livre: 0 };
+    for (const t of this.tasks) {
+      if (counts[t.type] && counts[t.type][t.shift] !== undefined) counts[t.type][t.shift]++;
+    }
+
+    return `
+      <div class="mb-6 shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        ${INDICATOR_TYPES.map(({ type, label, icon, iconClass }) => {
+          const c = counts[type];
+          const total = c.manha + c.tarde + c.livre;
+          return `
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-8 h-8 rounded-lg border ${iconClass} flex items-center justify-center shrink-0">
+                <i class="fa-solid ${icon} text-xs"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-white truncate">${label}</p>
+                <p class="text-xs text-slate-500">${total} pessoa${total !== 1 ? 's' : ''} no dia</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p class="text-lg font-bold text-white">${c.manha}</p>
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">Manhã</p>
+              </div>
+              <div>
+                <p class="text-lg font-bold text-white">${c.tarde}</p>
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">Tarde</p>
+              </div>
+              <div>
+                <p class="text-lg font-bold text-white">${c.livre}</p>
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">Livre</p>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>`;
   },
 
