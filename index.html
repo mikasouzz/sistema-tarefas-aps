@@ -96,6 +96,17 @@
         grid-template-columns: 140px repeat(10, 1fr);
         min-width: 980px;
       }
+
+      /* trophy highlight */
+      @keyframes trophy-bounce {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        25%      { transform: translateY(-3px) rotate(-8deg); }
+        75%      { transform: translateY(-1px) rotate(8deg); }
+      }
+      .trophy-bounce {
+        display: inline-block;
+        animation: trophy-bounce 1.6s ease-in-out infinite;
+      }
     </style>
   </head>
   <body class="bg-slate-900 text-slate-100 h-screen overflow-hidden">

@@ -1,18 +1,6 @@
 import { AppState } from '../../state.js';
 import { getMondayOf, toDateStr, fmtShort } from '../../utils/date.js';
 
-const MEDALS = [
-  '<i class="fa-solid fa-trophy text-amber-400 text-lg"></i>',
-  '<i class="fa-solid fa-medal text-slate-300 text-lg"></i>',
-  '<i class="fa-solid fa-medal text-amber-700 text-lg"></i>',
-];
-
-const SHIFT_LABEL = { manha: 'Manhã', tarde: 'Tarde', livre: 'Livre' };
-const SHIFT_ICON  = {
-  manha: '<i class="fa-solid fa-sun text-amber-400 text-base"></i>',
-  tarde: '<i class="fa-solid fa-cloud-sun text-orange-400 text-base"></i>',
-  livre: '<i class="fa-solid fa-clock text-teal-400 text-base"></i>',
-};
 const TYPE_LABEL = {
   operacional: 'Operacional',
   analitica:   'Analítica',
@@ -21,6 +9,7 @@ const TYPE_LABEL = {
   reuniao:     'Reunião',
   suporte:     'Suporte',
 };
+const TYPE_ORDER = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao', 'suporte'];
 const TYPE_BAR = {
   operacional: 'bg-blue-500',
   analitica:   'bg-violet-500',
@@ -29,121 +18,187 @@ const TYPE_BAR = {
   reuniao:     'bg-rose-500',
   suporte:     'bg-cyan-500',
 };
+const TYPE_HEX = {
+  operacional: '#3b82f6',
+  analitica:   '#8b5cf6',
+  estrategia:  '#f59e0b',
+  treinamento: '#10b981',
+  reuniao:     '#f43f5e',
+  suporte:     '#06b6d4',
+};
 
 export const RankingCtrl = {
   _container: null,
+  _selectedMemberId: 'all',
+  _rangeStart: null,
+  _rangeEnd: null,
 
   init(container) {
     this._container = container;
+    const monday = getMondayOf(new Date());
+    const friday = new Date(monday); friday.setDate(monday.getDate() + 4);
+    this._rangeStart = toDateStr(monday);
+    this._rangeEnd   = toDateStr(friday);
     this._render();
   },
 
-  _weekRange(monday) {
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-    return { start: toDateStr(monday), end: toDateStr(friday) };
+  onMemberChange(value) {
+    this._selectedMemberId = value;
+    this._render();
+  },
+
+  _monthWeeks(refDate) {
+    const year  = refDate.getFullYear();
+    const month = refDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay  = new Date(year, month + 1, 0);
+
+    const weeks = [];
+    let cursor = getMondayOf(firstDay);
+    let idx = 1;
+    while (cursor <= lastDay) {
+      const friday = new Date(cursor); friday.setDate(cursor.getDate() + 4);
+      const start = new Date(Math.max(cursor, firstDay));
+      const end   = new Date(Math.min(friday, lastDay));
+      if (start <= lastDay && end >= firstDay) {
+        weeks.push({ label: `S${idx}`, start: toDateStr(start), end: toDateStr(end) });
+        idx++;
+      }
+      cursor = new Date(cursor); cursor.setDate(cursor.getDate() + 7);
+    }
+    return weeks;
+  },
+
+  onRangeChange(field, value) {
+    if (!value) return;
+    if (field === 'start') this._rangeStart = value;
+    if (field === 'end')   this._rangeEnd   = value;
+    if (this._rangeStart > this._rangeEnd) {
+      if (field === 'start') this._rangeEnd = value;
+      else this._rangeStart = value;
+    }
+    this._render();
   },
 
   _render() {
     const { members, tasks } = AppState;
+    const active = members.filter(m => m.active);
 
-    const monday     = getMondayOf(new Date());
-    const lastMonday = new Date(monday); lastMonday.setDate(monday.getDate() - 7);
+    const weekStart = this._rangeStart;
+    const weekEnd    = this._rangeEnd;
+    const weekLabel  = `${fmtShort(new Date(weekStart + 'T12:00:00'))} — ${fmtShort(new Date(weekEnd + 'T12:00:00'))}`;
 
-    const { start: weekStart, end: weekEnd }     = this._weekRange(monday);
-    const { start: lastStart, end: lastEnd }     = this._weekRange(lastMonday);
-
-    const weekTasks     = tasks.filter(t => t.scheduled_date >= weekStart && t.scheduled_date <= weekEnd);
-    const lastWeekTasks = tasks.filter(t => t.scheduled_date >= lastStart && t.scheduled_date <= lastEnd);
-
-    const weekLabel = `${fmtShort(monday)} — ${fmtShort(new Date(monday.getTime() + 4 * 86400000))}`;
+    const allWeekTasks = tasks.filter(t => t.scheduled_date >= weekStart && t.scheduled_date <= weekEnd);
+    let weekTasks = allWeekTasks;
+    if (this._selectedMemberId !== 'all') {
+      weekTasks = weekTasks.filter(t => t.member_id === this._selectedMemberId);
+    }
 
     // ── Taxa geral ────────────────────────────────────────────────────────────
     const totalCurr = weekTasks.length;
     const doneCurr  = weekTasks.filter(t => t.status === 'done').length;
     const pctCurr   = totalCurr > 0 ? Math.round((doneCurr / totalCurr) * 100) : 0;
 
-    // ── Evolução semanal ──────────────────────────────────────────────────────
-    const totalLast = lastWeekTasks.length;
-    const doneLast  = lastWeekTasks.filter(t => t.status === 'done').length;
-    const pctLast   = totalLast > 0 ? Math.round((doneLast / totalLast) * 100) : null;
-    const delta     = pctLast !== null ? pctCurr - pctLast : null;
-
-    // ── Turno mais produtivo ──────────────────────────────────────────────────
-    const shiftDone = { manha: 0, tarde: 0, livre: 0 };
-    for (const t of weekTasks.filter(t => t.status === 'done')) {
-      if (t.shift in shiftDone) shiftDone[t.shift]++;
-    }
-    const [bestShift, bestShiftCount] = Object.entries(shiftDone).sort((a, b) => b[1] - a[1])[0];
-
-    // ── Taxa por tipo ─────────────────────────────────────────────────────────
+    // ── Distribuição por tipo (rosca) ────────────────────────────────────────
     const typeMap = {};
     for (const t of weekTasks) {
       if (!typeMap[t.type]) typeMap[t.type] = { total: 0, done: 0 };
       typeMap[t.type].total++;
       if (t.status === 'done') typeMap[t.type].done++;
     }
-    const typeStats = Object.entries(typeMap)
-      .map(([type, s]) => ({ type, ...s, pct: Math.round((s.done / s.total) * 100) }))
-      .sort((a, b) => b.pct - a.pct || b.total - a.total);
+    const typeStats = TYPE_ORDER
+      .filter(type => typeMap[type])
+      .map(type => ({ type, ...typeMap[type], pct: Math.round((typeMap[type].done / typeMap[type].total) * 100) }));
 
-    // ── Ranking com evolução ──────────────────────────────────────────────────
-    const rankMap = new Map();
-    for (const m of members.filter(m => m.active)) {
-      rankMap.set(m.id, { name: m.name, total: 0, done: 0, lastTotal: 0, lastDone: 0 });
+    // ── Rankings de suporte / treinamento / reunião ──────────────────────────
+    const rankingTypes = ['suporte', 'treinamento', 'reuniao'];
+    const memberCounts = new Map();
+    for (const m of active) {
+      memberCounts.set(m.id, { name: m.name, suporte: 0, treinamento: 0, reuniao: 0 });
     }
-    for (const t of weekTasks) {
-      if (!rankMap.has(t.member_id)) continue;
-      const g = rankMap.get(t.member_id);
-      g.total++; if (t.status === 'done') g.done++;
+    for (const t of allWeekTasks) {
+      const g = memberCounts.get(t.member_id);
+      if (g && rankingTypes.includes(t.type)) g[t.type]++;
     }
-    for (const t of lastWeekTasks) {
-      if (!rankMap.has(t.member_id)) continue;
-      const g = rankMap.get(t.member_id);
-      g.lastTotal++; if (t.status === 'done') g.lastDone++;
-    }
-    const ranking = [...rankMap.values()]
-      .filter(g => g.total > 0)
-      .map(g => ({
-        ...g,
-        pct:     Math.round((g.done / g.total) * 100),
-        lastPct: g.lastTotal > 0 ? Math.round((g.lastDone / g.lastTotal) * 100) : null,
-        score:   g.done + (g.done * (g.done / g.total)),
-      }))
-      .sort((a, b) => b.score - a.score || b.done - a.done || a.name.localeCompare(b.name));
+    const typeRankings = Object.fromEntries(rankingTypes.map(type => [
+      type,
+      [...memberCounts.values()]
+        .sort((a, b) => b[type] - a[type] || a.name.localeCompare(b.name)),
+    ]));
+
+    // ── Evolução semanal do mês corrente ─────────────────────────────────────
+    const monthWeeks = this._monthWeeks(new Date());
+    const memberFilter = t => this._selectedMemberId === 'all' || t.member_id === this._selectedMemberId;
+    const weeklyVolume = monthWeeks.map(w => ({
+      ...w,
+      total: tasks.filter(t => memberFilter(t) && t.scheduled_date >= w.start && t.scheduled_date <= w.end).length,
+    }));
 
     this._container.innerHTML = `
-      <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex-1 flex flex-col min-h-0 overflow-y-auto">
         <!-- Cabeçalho -->
-        <div class="mb-6 shrink-0">
-          <h2 class="text-xl font-semibold text-white flex items-center gap-2">
-            <i class="fa-solid fa-chart-line text-primary"></i> Visão Geral
-          </h2>
-          <p class="text-slate-400 text-sm mt-1">${weekLabel}</p>
+        <div class="mb-6 shrink-0 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-primary"></i> Visão Geral
+            </h2>
+            <p class="text-slate-400 text-sm mt-1">${weekLabel}</p>
+          </div>
+          <div class="flex items-end gap-2 flex-wrap">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">De</label>
+              <input type="date" value="${this._rangeStart}" max="${this._rangeEnd}"
+                onchange="RankingCtrl.onRangeChange('start', this.value)"
+                class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white
+                       focus:outline-none focus:border-primary transition-colors">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Até</label>
+              <input type="date" value="${this._rangeEnd}" min="${this._rangeStart}"
+                onchange="RankingCtrl.onRangeChange('end', this.value)"
+                class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white
+                       focus:outline-none focus:border-primary transition-colors">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Membro</label>
+              <select onchange="RankingCtrl.onMemberChange(this.value)"
+                class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white
+                       focus:outline-none focus:border-primary transition-colors min-w-[180px]">
+                <option value="all" ${this._selectedMemberId === 'all' ? 'selected' : ''}>Toda a equipe</option>
+                ${active.map(m => `<option value="${m.id}" ${this._selectedMemberId === m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
         </div>
 
-        <!-- 3 Cards de destaque -->
+        <!-- Card de destaque -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 shrink-0">
           ${this._cardTaxaGeral(pctCurr, doneCurr, totalCurr)}
-          ${this._cardEvolucao(pctCurr, pctLast, delta)}
-          ${this._cardTurno(bestShift, bestShiftCount)}
         </div>
 
-        <!-- Corpo: taxa por tipo + ranking -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
-          ${this._sectionTipos(typeStats)}
-          ${this._sectionRanking(ranking)}
+        <!-- Corpo: rosca por tipo + evolução semanal + destaques -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          ${this._sectionDonut(typeStats, totalCurr)}
+          ${this._sectionEvolucaoMensal(weeklyVolume)}
+          ${this._sectionDestaques(typeRankings)}
+        </div>
+
+        <!-- Rankings: suporte / treinamento / reunião -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          ${this._sectionRankingTipo('suporte',     typeRankings.suporte,     'fa-headset')}
+          ${this._sectionRankingTipo('treinamento', typeRankings.treinamento, 'fa-chalkboard-user')}
+          ${this._sectionRankingTipo('reuniao',      typeRankings.reuniao,    'fa-users')}
         </div>
       </div>`;
   },
 
-  // ── Cards de destaque ───────────────────────────────────────────────────────
+  // ── Card de destaque ────────────────────────────────────────────────────────
 
   _cardTaxaGeral(pct, done, total) {
     const allDone = done > 0 && done === total;
     return `
       <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Taxa da semana</p>
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Taxa do período</p>
         <p class="text-3xl font-bold ${allDone ? 'text-accent' : 'text-white'}">${pct}<span class="text-lg font-normal text-slate-400">%</span></p>
         <p class="text-slate-400 text-xs mt-1">${done} de ${total} tarefa${total !== 1 ? 's' : ''} concluída${total !== 1 ? 's' : ''}</p>
         <div class="mt-3 w-full bg-slate-700 rounded-full h-1.5">
@@ -152,125 +207,150 @@ export const RankingCtrl = {
       </div>`;
   },
 
-  _cardEvolucao(pctCurr, pctLast, delta) {
-    let badge, sub;
-    if (delta === null) {
-      badge = `<span class="text-slate-500 text-2xl font-bold">—</span>`;
-      sub   = `<p class="text-slate-500 text-xs mt-1">Sem dados da semana anterior</p>`;
-    } else if (delta > 0) {
-      badge = `<span class="text-accent text-3xl font-bold">+${delta}<span class="text-lg font-normal">pp</span></span>`;
-      sub   = `<p class="text-slate-400 text-xs mt-1"><i class="fa-solid fa-arrow-trend-up text-accent mr-1"></i>Era ${pctLast}% na semana passada</p>`;
-    } else if (delta < 0) {
-      badge = `<span class="text-danger text-3xl font-bold">${delta}<span class="text-lg font-normal">pp</span></span>`;
-      sub   = `<p class="text-slate-400 text-xs mt-1"><i class="fa-solid fa-arrow-trend-down text-danger mr-1"></i>Era ${pctLast}% na semana passada</p>`;
-    } else {
-      badge = `<span class="text-slate-300 text-3xl font-bold">=${pctCurr}<span class="text-lg font-normal text-slate-400">%</span></span>`;
-      sub   = `<p class="text-slate-400 text-xs mt-1"><i class="fa-solid fa-minus text-slate-400 mr-1"></i>Igual à semana passada</p>`;
+  // ── Seção: gráfico de rosca por tipo ─────────────────────────────────────────
+
+  _sectionDonut(typeStats, total) {
+    if (typeStats.length === 0) {
+      return `
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <p class="text-sm font-semibold text-white mb-4">Demandas por tipo</p>
+          <p class="text-slate-500 text-sm text-center py-8">Nenhuma tarefa nessa semana.</p>
+        </div>`;
     }
+
+    let acc = 0;
+    const stops = typeStats.map(s => {
+      const from = (acc / total) * 360;
+      acc += s.total;
+      const to = (acc / total) * 360;
+      return `${TYPE_HEX[s.type]} ${from}deg ${to}deg`;
+    }).join(', ');
+
     return `
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Evolução semanal</p>
-        ${badge}
-        ${sub}
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 h-full flex flex-col">
+        <p class="text-sm font-semibold text-white mb-4">Demandas por tipo</p>
+        <div class="flex flex-col items-center gap-5">
+          <div class="relative shrink-0" style="width:150px;height:150px">
+            <div class="w-full h-full rounded-full" style="background:conic-gradient(${stops})"></div>
+            <div class="absolute inset-[18%] bg-slate-800 rounded-full flex flex-col items-center justify-center">
+              <span class="text-xl font-bold text-white">${total}</span>
+              <span class="text-[9px] text-slate-400 uppercase tracking-wide">tarefa${total !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2 flex-1 min-w-0 w-full">
+            ${typeStats.map(s => {
+              const share = Math.round((s.total / total) * 100);
+              return `
+                <div class="flex items-center justify-between gap-3">
+                  <span class="flex items-center gap-2 text-sm text-slate-300 min-w-0">
+                    <span class="w-2.5 h-2.5 rounded-sm ${TYPE_BAR[s.type]} shrink-0"></span>
+                    <span class="truncate">${TYPE_LABEL[s.type] || s.type}</span>
+                  </span>
+                  <span class="text-xs text-slate-400 shrink-0">${s.total} · <span class="font-medium text-white">${share}%</span></span>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>`;
+  },
+  // ── Seção: destaques da semana ───────────────────────────────────────────────
+
+  _sectionDestaques(typeRankings) {
+    const items = [
+      { type: 'suporte',     icon: 'fa-headset' },
+      { type: 'treinamento', icon: 'fa-chalkboard-user' },
+      { type: 'reuniao',     icon: 'fa-users' },
+    ];
+    return `
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 h-full flex flex-col">
+        <p class="text-sm font-semibold text-white mb-4">Destaques da semana</p>
+        <div class="flex flex-col gap-3 flex-1 justify-center">
+          ${items.map(({ type, icon }) => {
+            const leader = typeRankings[type]?.[0];
+            const hasScore = leader && leader[type] > 0;
+            return `
+              <div class="flex items-center gap-3 bg-slate-700/40 border border-slate-600/60 rounded-lg px-3 py-2.5">
+                <span class="text-xl trophy-bounce shrink-0">${hasScore ? '🏆' : '<i class="fa-solid fa-trophy text-slate-600 text-lg"></i>'}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-[10px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                    <i class="fa-solid ${icon}"></i>${TYPE_LABEL[type]}
+                  </p>
+                  ${hasScore
+                    ? `<p class="text-sm text-white font-medium truncate">${leader.name} <span class="text-slate-400 font-normal">· ${leader[type]}</span></p>`
+                    : `<p class="text-sm text-slate-500">Sem dados</p>`}
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
       </div>`;
   },
 
-  _cardTurno(shift, count) {
-    const hasData = count > 0;
+  // ── Seção: ranking por tipo (suporte / treinamento / reunião) ───────────────
+
+  _sectionRankingTipo(type, ranking, icon) {
+    const barCls = TYPE_BAR[type];
+    const max = ranking.length > 0 ? Math.max(...ranking.map(g => g[type])) : 0;
     return `
       <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Turno mais produtivo</p>
-        ${hasData
-          ? `<div class="flex items-center gap-2">
-               <span class="text-2xl">${SHIFT_ICON[shift]}</span>
-               <span class="text-2xl font-bold text-white">${SHIFT_LABEL[shift]}</span>
-             </div>
-             <p class="text-slate-400 text-xs mt-1">${count} conclus${count !== 1 ? 'ões' : 'ão'} neste turno</p>`
-          : `<span class="text-slate-500 text-2xl font-bold">—</span>
-             <p class="text-slate-500 text-xs mt-1">Nenhuma tarefa concluída</p>`}
-      </div>`;
-  },
-
-  // ── Seção: taxa por tipo ────────────────────────────────────────────────────
-
-  _sectionTipos(typeStats) {
-    return `
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 overflow-y-auto">
-        <p class="text-sm font-semibold text-white mb-4">Conclusão por tipo</p>
-        ${typeStats.length === 0
-          ? `<p class="text-slate-500 text-sm text-center py-8">Nenhuma tarefa nessa semana.</p>`
-          : `<div class="flex flex-col gap-4">
-               ${typeStats.map(s => `
+        <p class="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <i class="fa-solid ${icon} text-slate-400"></i>${TYPE_LABEL[type]}
+        </p>
+        ${ranking.length === 0
+          ? `<p class="text-slate-500 text-sm text-center py-6">Nenhum membro ativo.</p>`
+          : `<div class="flex flex-col gap-2.5">
+               ${ranking.map((g, i) => `
                  <div>
-                   <div class="flex items-center justify-between mb-1.5">
-                     <span class="text-sm text-slate-300">${TYPE_LABEL[s.type] || s.type}</span>
-                     <span class="text-xs text-slate-400">${s.done}/${s.total} · <span class="font-medium text-white">${s.pct}%</span></span>
+                   <div class="flex items-center justify-between mb-1">
+                     <span class="text-xs text-slate-300 truncate flex items-center gap-1.5">
+                       <span class="text-slate-500 font-semibold shrink-0">${i + 1}º</span>${g.name}
+                     </span>
+                     <span class="text-xs font-medium text-white shrink-0">${g[type]}</span>
                    </div>
-                   <div class="w-full bg-slate-700 rounded-full h-2">
-                     <div class="h-2 rounded-full transition-all duration-500 ${TYPE_BAR[s.type] || 'bg-slate-500'}"
-                          style="width:${s.pct}%"></div>
+                   <div class="w-full bg-slate-700 rounded-full h-1.5">
+                     <div class="h-1.5 rounded-full ${barCls}" style="width:${max > 0 ? Math.round((g[type] / max) * 100) : 0}%"></div>
                    </div>
                  </div>`).join('')}
              </div>`}
       </div>`;
   },
+  // ── Seção: evolução semanal do mês ──────────────────────────────────────────
 
-  // ── Seção: ranking ──────────────────────────────────────────────────────────
+  _sectionEvolucaoMensal(weeklyVolume) {
+    const max = Math.max(1, ...weeklyVolume.map(w => w.total));
+    const monthLabel = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const PLOT_H = 130;
+    const n = weeklyVolume.length;
+    const slot = 100 / n;
 
-  _sectionRanking(ranking) {
-    return `
-      <div class="overflow-y-auto">
-        <p class="text-sm font-semibold text-white mb-4">Ranking</p>
-        ${ranking.length === 0
-          ? `<div class="text-center py-12 text-slate-500 bg-slate-800 border border-slate-700 rounded-xl">
-               <i class="fa-solid fa-trophy text-4xl mb-3 block opacity-20"></i>
-               <p class="text-sm">Nenhuma tarefa registrada nessa semana.</p>
-             </div>`
-          : `<div class="flex flex-col gap-3">
-               ${ranking.map((g, i) => this._row(g, i)).join('')}
-             </div>`}
-      </div>`;
-  },
-
-  _row(g, i) {
-    const pct     = g.pct;
-    const allDone = g.done === g.total && g.total > 0;
-    const isTop3  = i < 3;
-    const initial = g.name.charAt(0).toUpperCase();
-
-    const memberDelta = g.lastPct !== null ? g.pct - g.lastPct : null;
-    let evoBadge = '';
-    if (memberDelta !== null) {
-      if (memberDelta > 0)
-        evoBadge = `<span class="text-xs text-accent font-medium"><i class="fa-solid fa-arrow-up text-[10px]"></i> +${memberDelta}pp</span>`;
-      else if (memberDelta < 0)
-        evoBadge = `<span class="text-xs text-danger font-medium"><i class="fa-solid fa-arrow-down text-[10px]"></i> ${memberDelta}pp</span>`;
-      else
-        evoBadge = `<span class="text-xs text-slate-500">→</span>`;
-    }
+    const points = weeklyVolume.map((w, i) => {
+      const heightPct = w.total > 0 ? Math.max(4, (w.total / max) * 100) : 0;
+      return { x: slot * (i + 0.5), y: PLOT_H - (heightPct / 100) * PLOT_H };
+    });
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
     return `
-      <div class="bg-slate-800 border ${isTop3 ? 'border-slate-600' : 'border-slate-700'} rounded-xl p-4 flex items-center gap-4">
-        <div class="w-8 text-center shrink-0">
-          ${isTop3 ? MEDALS[i] : `<span class="text-slate-500 font-bold text-sm">${i + 1}º</span>`}
-        </div>
-        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 bg-primary/20 border border-primary/40 text-primary">
-          ${initial}
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between mb-1.5">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="font-medium text-white text-sm truncate">${g.name}</span>
-              ${evoBadge}
-            </div>
-            <span class="text-xs ${allDone ? 'text-accent font-medium' : 'text-slate-400'} shrink-0 ml-2">
-              ${g.done} / ${g.total}
-            </span>
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 h-full flex flex-col">
+        <p class="text-sm font-semibold text-white mb-1">Evolução semanal</p>
+        <p class="text-xs text-slate-500 mb-5 capitalize">Volume de tarefas por semana · ${monthLabel}</p>
+        <div class="relative flex-1" style="height:${PLOT_H}px">
+          <svg class="absolute inset-0 w-full h-full overflow-visible" viewBox="0 0 100 ${PLOT_H}" preserveAspectRatio="none">
+            <path d="${linePath}" fill="none" stroke="#facc15" stroke-width="2" vector-effect="non-scaling-stroke" />
+            ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="2.2" fill="#facc15" vector-effect="non-scaling-stroke" />`).join('')}
+          </svg>
+          <div class="absolute inset-0 flex items-end justify-around gap-3">
+            ${weeklyVolume.map(w => {
+              const heightPct = w.total > 0 ? Math.max(4, Math.round((w.total / max) * 100)) : 0;
+              const rangeLabel = `${fmtShort(new Date(w.start + 'T12:00:00'))} – ${fmtShort(new Date(w.end + 'T12:00:00'))}`;
+              return `
+                <div class="flex flex-col items-center flex-1 h-full justify-end" title="${rangeLabel}">
+                  <span class="text-xs font-medium text-white mb-1">${w.total}</span>
+                  <div class="w-full max-w-[44px] bg-primary/70 rounded-t-md transition-all duration-500" style="height:${heightPct}%"></div>
+                </div>`;
+            }).join('')}
           </div>
-          <div class="w-full bg-slate-700 rounded-full h-1.5">
-            <div class="h-1.5 rounded-full transition-all duration-500 ${allDone ? 'bg-accent' : 'bg-primary'}"
-                 style="width:${pct}%"></div>
-          </div>
+        </div>
+        <div class="flex items-center justify-around gap-3 mt-2">
+          ${weeklyVolume.map(w => `<span class="flex-1 text-center text-[10px] text-slate-500 uppercase tracking-wide">${w.label}</span>`).join('')}
         </div>
       </div>`;
   },
