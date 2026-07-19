@@ -19,6 +19,7 @@ const TYPE_LABEL = {
   estrategia:  'Estratégia',
   treinamento: 'Treinamento',
   reuniao:     'Reunião',
+  suporte:     'Suporte',
 };
 const TYPE_BAR = {
   operacional: 'bg-blue-500',
@@ -26,6 +27,7 @@ const TYPE_BAR = {
   estrategia:  'bg-amber-500',
   treinamento: 'bg-emerald-500',
   reuniao:     'bg-rose-500',
+  suporte:     'bg-cyan-500',
 };
 
 export const RankingCtrl = {

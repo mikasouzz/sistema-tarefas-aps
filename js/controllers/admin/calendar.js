@@ -9,6 +9,7 @@ const TYPE_OPTS  = [
   { v:'estrategia',   l:'Estratégia' },
   { v:'treinamento',  l:'Treinamento' },
   { v:'reuniao',      l:'Reunião' },
+  { v:'suporte',      l:'Suporte' },
 ];
 const TYPE_DOT = {
   operacional: 'bg-blue-500',
@@ -16,6 +17,7 @@ const TYPE_DOT = {
   estrategia:  'bg-amber-500',
   treinamento: 'bg-emerald-500',
   reuniao:     'bg-rose-500',
+  suporte:     'bg-cyan-500',
 };
 const TYPE_LABEL  = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
 const SHIFT_ORDER  = { manha: 0, tarde: 1, livre: 2 };
@@ -885,8 +887,8 @@ export const CalendarCtrl = {
     const DAY_LABEL = ['Seg','Ter','Qua','Qui','Sex'];
     const SHIFTS    = ['manha','tarde','livre'];
     const SHIFT_LABEL = { manha: 'Manhã', tarde: 'Tarde', livre: 'Livre' };
-    const TYPE_ABBR = { operacional:'Oper.', analitica:'Analít.', estrategia:'Estrat.', treinamento:'Treino', reuniao:'Reunião' };
-    const TYPE_CLS  = { operacional:'op', analitica:'an', estrategia:'es', treinamento:'tr', reuniao:'re' };
+    const TYPE_ABBR = { operacional:'Oper.', analitica:'Analít.', estrategia:'Estrat.', treinamento:'Treino', reuniao:'Reunião', suporte:'Suporte' };
+    const TYPE_CLS  = { operacional:'op', analitica:'an', estrategia:'es', treinamento:'tr', reuniao:'re', suporte:'su' };
 
     const today = toDateStr(new Date());
 
@@ -952,6 +954,7 @@ td.member{font-weight:600;color:#1e293b;background:#f8fafc;width:90px;vertical-a
 .es{background:#fef3c7;color:#92400e}
 .tr{background:#d1fae5;color:#065f46}
 .re{background:#fce7f3;color:#9d174d}
+.su{background:#cffafe;color:#0e7490}
 .empty{color:#cbd5e1;font-size:10px}
 footer{margin-top:10px;font-size:9px;color:#94a3b8}
 button{margin-bottom:14px;padding:6px 14px;background:#6d28d9;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px}

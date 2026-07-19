@@ -10,6 +10,7 @@ const TYPE_LABEL = {
   estrategia:  'Estratégia',
   treinamento: 'Treinamento',
   reuniao:     'Reunião',
+  suporte:     'Suporte',
 };
 const TYPE_CLASS = {
   operacional: 'bg-blue-900/50 text-blue-300 border-blue-700',
@@ -17,6 +18,7 @@ const TYPE_CLASS = {
   estrategia:  'bg-amber-900/50 text-amber-300 border-amber-700',
   treinamento: 'bg-emerald-900/50 text-emerald-300 border-emerald-700',
   reuniao:     'bg-rose-900/50 text-rose-300 border-rose-700',
+  suporte:     'bg-cyan-900/50 text-cyan-300 border-cyan-700',
 };
 const SHIFT_HTML = {
   manha: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
@@ -313,6 +315,7 @@ export const TodayCtrl = {
                   <option value="estrategia">Estratégia</option>
                   <option value="treinamento">Treinamento</option>
                   <option value="reuniao">Reunião</option>
+                  <option value="suporte">Suporte</option>
                 </select>
               </div>
               <div>

@@ -24,7 +24,7 @@ create table if not exists tb_aps_tasks (
   scheduled_date   text,        -- 'YYYY-MM-DD' — null para demandas
   priority         text,        -- 'principal' | 'secundaria'
   shift            text,        -- 'manha' | 'tarde' | 'livre'
-  type             text,        -- 'operacional' | 'analitica' | 'estrategia' | 'treinamento' | 'reuniao'
+  type             text,        -- 'operacional' | 'analitica' | 'estrategia' | 'treinamento' | 'reuniao' | 'suporte'
   event_time       text,        -- 'HH:MM' — apenas treinamento/reunião
   demand_category  text,        -- 'reprimida' | 'estudo' — apenas quando member_id IS NULL
   demand_id        text references tb_aps_tasks(id) on delete set null,  -- ref para demanda de origem
@@ -74,7 +74,7 @@ create table if not exists tb_aps_task_insert_requests (
   member_id      text references tb_aps_members(id) on delete cascade,
   member_name    text not null,
   title          text not null,
-  type           text,            -- 'operacional' | 'analitica' | 'estrategia' | 'treinamento' | 'reuniao'
+  type           text,            -- 'operacional' | 'analitica' | 'estrategia' | 'treinamento' | 'reuniao' | 'suporte'
   shift          text,            -- 'manha' | 'tarde' | 'livre'
   priority       text,            -- 'principal' | 'secundaria'
   scheduled_date text,            -- 'YYYY-MM-DD'

@@ -3,7 +3,7 @@ import { AppState, setAppState } from '../../state.js';
 import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../utils/date.js';
 
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
-const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião' };
+const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte' };
 const SHIFT_BADGE = {
   manha: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
   tarde: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-orange-400/20 text-orange-400"><i class="fa-solid fa-cloud-sun text-xs"></i>Tarde</span>',

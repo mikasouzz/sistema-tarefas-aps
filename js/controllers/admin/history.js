@@ -2,7 +2,7 @@ import { db } from '../../db.js';
 import { AppState } from '../../state.js';
 import { todayStr } from '../../utils/date.js';
 
-const TYPE_LABEL  = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião' };
+const TYPE_LABEL  = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte' };
 const SHIFT_LABEL = { manha:'Manhã', tarde:'Tarde', livre:'Livre' };
 
 export const HistoryCtrl = {
@@ -119,7 +119,7 @@ export const HistoryCtrl = {
       byType[t.type].total++;
       if (t.status === 'done') byType[t.type].done++;
     }
-    const typeOrder   = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao'];
+    const typeOrder   = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao', 'suporte'];
     const typeEntries = typeOrder.filter(k => byType[k]).map(k => [k, byType[k]]);
 
     const byMember = {};
