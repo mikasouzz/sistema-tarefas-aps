@@ -34,6 +34,7 @@ const INDICATOR_TYPES = [
 export const TodayCtrl = {
   tasks: [],
   _container: null,
+  _activeMemberId: null,
 
   async init(container) {
     this._container = container;
@@ -145,8 +146,8 @@ export const TodayCtrl = {
           ${this._indicatorCards()}
 
           <div class="flex-1 overflow-y-auto pr-1">
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              ${groups.map(g => this._memberPanel(g)).join('')}
+            <div class="flex flex-col gap-2">
+              ${groups.map(g => this._memberRow(g)).join('')}
             </div>
           </div>
         </div>
@@ -219,47 +220,103 @@ export const TodayCtrl = {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  _memberPanel(group) {
+  _memberRow(group) {
     const member     = AppState.members.find(m => m.id === group.memberId);
     const onVacation = member?.on_vacation;
-    const vacStart   = member?.vacation_start;
-    const vacEnd     = member?.vacation_end;
-    const fmtDate    = s => { if (!s) return ''; const [,mo,d] = s.split('-'); return `${d}/${mo}`; };
-
     const absence    = AppState.absences?.find(a => a.member_id === group.memberId && a.date === todayStr());
-    const ABSENCE_LABEL = { manha: 'pela manhã', tarde: 'pela tarde', dia_todo: 'o dia todo' };
-
-    const borderClass  = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
-    const dividerClass = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
 
     const initial   = group.name.charAt(0).toUpperCase();
     const total     = group.tasks.length;
     const doneCount = group.tasks.filter(t => t.status === 'done').length;
     const allDone   = doneCount === total;
 
-    const pendingInserts = AppState.insertRequests.filter(r => r.member_id === group.memberId).length;
+    const borderClass = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
 
     return `
-      <div class="bg-slate-800 border ${borderClass} rounded-xl overflow-hidden flex flex-col">
+      <button onclick="TodayCtrl._openMemberModal('${group.memberId}')"
+        class="w-full bg-slate-800 border ${borderClass} hover:border-primary/60 rounded-xl px-4 py-3 flex items-center gap-3 transition-colors text-left">
+        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0
+                    ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
+          ${allDone ? '<i class="fa-solid fa-check text-xs"></i>' : initial}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-white text-sm truncate">${group.name}</p>
+          <p class="text-xs text-slate-400">${doneCount} de ${total} concluída${total !== 1 ? 's' : ''}</p>
+        </div>
+        ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-sm shrink-0"></i>' : ''}
+        ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-sm shrink-0"></i>' : ''}
+        <i class="fa-solid fa-chevron-right text-slate-600 text-xs shrink-0"></i>
+      </button>`;
+  },
+
+  _openMemberModal(memberId) {
+    this._activeMemberId = memberId;
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="TodayCtrl._memberModalBackdrop(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]"
+             onclick="event.stopPropagation()">
+          ${this._memberModalContent(memberId)}
+        </div>
+      </div>`;
+  },
+
+  _closeMemberModal() {
+    this._activeMemberId = null;
+    document.getElementById('modal-container').innerHTML = '';
+  },
+
+  _memberModalBackdrop(e) {
+    if (e.target === e.currentTarget) this._closeMemberModal();
+  },
+
+  _refreshMemberModal() {
+    if (!this._activeMemberId) return;
+    const body = document.querySelector('#modal-container .bg-slate-800');
+    if (body) body.innerHTML = this._memberModalContent(this._activeMemberId);
+  },
+
+  _memberModalContent(memberId) {
+    const group = this._groupByMember().find(g => g.memberId === memberId);
+    if (!group) return '';
+
+    const member     = AppState.members.find(m => m.id === memberId);
+    const onVacation = member?.on_vacation;
+    const vacStart   = member?.vacation_start;
+    const vacEnd     = member?.vacation_end;
+    const fmtDate    = s => { if (!s) return ''; const [,mo,d] = s.split('-'); return `${d}/${mo}`; };
+
+    const absence    = AppState.absences?.find(a => a.member_id === memberId && a.date === todayStr());
+    const ABSENCE_LABEL = { manha: 'pela manhã', tarde: 'pela tarde', dia_todo: 'o dia todo' };
+
+    const dividerClass = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
+
+    const total     = group.tasks.length;
+    const doneCount = group.tasks.filter(t => t.status === 'done').length;
+    const allDone   = doneCount === total;
+
+    const pendingInserts = AppState.insertRequests.filter(r => r.member_id === memberId).length;
+
+    return `
         <div class="px-4 py-3 border-b ${dividerClass} flex flex-col gap-2">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0
-                        ${allDone ? 'bg-accent/20 border border-accent/40 text-accent' : 'bg-primary/20 border border-primary/40 text-primary'}">
-              ${allDone ? '<i class="fa-solid fa-check text-xs"></i>' : initial}
-            </div>
+          <div class="flex items-center justify-between gap-2">
             <div class="min-w-0 flex-1">
-              <p class="font-semibold text-white text-sm truncate">${group.name}</p>
+              <p class="font-semibold text-white text-base truncate">${group.name}</p>
               <p class="text-xs text-slate-400">${doneCount} de ${total} concluída${total !== 1 ? 's' : ''}</p>
             </div>
             ${onVacation ? '<i class="fa-solid fa-umbrella-beach text-amber-400 text-sm shrink-0"></i>' : ''}
             ${absence && !onVacation ? '<i class="fa-solid fa-user-slash text-rose-400 text-sm shrink-0"></i>' : ''}
+            <button onclick="TodayCtrl._closeMemberModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shrink-0">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
           ${!allDone ? `
-          <button onclick="TodayCtrl.completeAllForMember('${group.memberId}')"
+          <button onclick="TodayCtrl.completeAllForMember('${memberId}')"
             class="w-full py-1.5 flex items-center justify-center gap-1.5 text-xs font-medium bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent rounded-lg transition-colors">
             <i class="fa-solid fa-check-double text-[10px]"></i> Concluir todas
           </button>` : ''}
-          <button onclick="TodayCtrl._openInsertModal('${group.memberId}')"
+          <button onclick="TodayCtrl._openInsertModal('${memberId}')"
             class="w-full py-1.5 flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-primary border border-dashed border-slate-700 hover:border-primary/50 rounded-lg transition-colors">
             <i class="fa-solid fa-plus text-[10px]"></i> Solicitar nova tarefa
             ${pendingInserts > 0 ? `<span class="ml-1 bg-primary/20 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full">${pendingInserts}</span>` : ''}
@@ -279,8 +336,7 @@ export const TodayCtrl = {
           </div>` : ''}
         <div class="flex flex-col gap-2 p-3">
           ${group.tasks.map(t => this._card(t)).join('')}
-        </div>
-      </div>`;
+        </div>`;
   },
 
   _card(t) {
@@ -427,7 +483,8 @@ export const TodayCtrl = {
   },
 
   _closeInsertModal() {
-    document.getElementById('modal-container').innerHTML = '';
+    if (this._activeMemberId) this._openMemberModal(this._activeMemberId);
+    else document.getElementById('modal-container').innerHTML = '';
   },
 
   _insertBackdrop(e) {
@@ -471,6 +528,7 @@ export const TodayCtrl = {
 
     this._closeInsertModal();
     this._render();
+    this._refreshMemberModal();
     window.Toast.show('Solicitação enviada para a supervisão.', 'success');
   },
 
@@ -528,7 +586,8 @@ export const TodayCtrl = {
   },
 
   _closeReqModal() {
-    document.getElementById('modal-container').innerHTML = '';
+    if (this._activeMemberId) this._openMemberModal(this._activeMemberId);
+    else document.getElementById('modal-container').innerHTML = '';
   },
 
   _reqBackdrop(e) {
@@ -561,6 +620,7 @@ export const TodayCtrl = {
 
     this._closeReqModal();
     this._render();
+    this._refreshMemberModal();
     window.Toast.show('Solicitação enviada para a supervisão.', 'success');
   },
 
@@ -571,6 +631,7 @@ export const TodayCtrl = {
     const task = this.tasks.find(t => t.id === id);
     if (task) task.status = next;
     this._render();
+    this._refreshMemberModal();
     window.Toast.show(next === 'done' ? 'Tarefa concluída!' : 'Tarefa reaberta.', next === 'done' ? 'success' : 'info');
   },
 
@@ -588,6 +649,7 @@ export const TodayCtrl = {
       if (task) task.status = 'done';
     });
     this._render();
+    this._refreshMemberModal();
     window.Toast.show('Tarefas concluídas!', 'success');
   },
 
