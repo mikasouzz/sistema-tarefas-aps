@@ -30,6 +30,12 @@ const INDICATOR_TYPES = [
   { type: 'treinamento', label: 'Treinamentos', icon: 'fa-chalkboard-user', iconClass: 'bg-emerald-900/50 border-emerald-700 text-emerald-300' },
   { type: 'reuniao',     label: 'Reuniões',     icon: 'fa-users',           iconClass: 'bg-rose-900/50 border-rose-700 text-rose-300' },
 ];
+const EVENT_COLOR_OPTS = [
+  { v: 'rosa',    l: 'Rosa'    },
+  { v: 'azul',    l: 'Azul'    },
+  { v: 'amarelo', l: 'Amarelo' },
+  { v: 'cinza',   l: 'Cinza'   },
+];
 
 export const TodayCtrl = {
   tasks: [],
@@ -460,6 +466,14 @@ export const TodayCtrl = {
                 class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                        focus:outline-none focus:border-primary transition-colors text-sm">
             </div>
+            <div id="ins-color-wrap" class="mb-3 hidden">
+              <label class="block text-sm text-slate-400 mb-1.5">Cor na agenda</label>
+              <select id="ins-color"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                       focus:outline-none focus:border-primary transition-colors text-sm">
+                ${EVENT_COLOR_OPTS.map(o => `<option value="${o.v}">${o.l}</option>`).join('')}
+              </select>
+            </div>
             <div class="mb-4">
               <label class="block text-sm text-slate-400 mb-1.5">Justificativa</label>
               <textarea id="ins-justification" rows="3" maxlength="200"
@@ -493,9 +507,12 @@ export const TodayCtrl = {
   },
 
   _toggleInsertEventTime() {
-    const type = document.getElementById('ins-type')?.value;
-    const wrap = document.getElementById('ins-time-wrap');
-    if (wrap) wrap.classList.toggle('hidden', !['treinamento', 'reuniao'].includes(type));
+    const type   = document.getElementById('ins-type')?.value;
+    const wrap   = document.getElementById('ins-time-wrap');
+    const cwrap  = document.getElementById('ins-color-wrap');
+    const needs  = ['treinamento', 'reuniao'].includes(type);
+    if (wrap)  wrap.classList.toggle('hidden', !needs);
+    if (cwrap) cwrap.classList.toggle('hidden', !needs);
   },
 
   async _submitInsertRequest(e, memberId) {
@@ -509,12 +526,13 @@ export const TodayCtrl = {
     const scheduled_date = document.getElementById('ins-date').value || null;
     const showTime    = ['treinamento', 'reuniao'].includes(type);
     const event_time  = showTime ? (document.getElementById('ins-time').value || null) : null;
+    const event_color = showTime ? (document.getElementById('ins-color').value || null) : null;
     const justification = document.getElementById('ins-justification').value.trim() || null;
     const id          = window.App.generateId();
 
     const { error } = await db.from('tb_aps_task_insert_requests').insert({
       id, member_id: memberId, member_name: memberName,
-      title, type, shift, priority, scheduled_date, event_time, justification,
+      title, type, shift, priority, scheduled_date, event_time, event_color, justification,
     });
 
     if (error) { window.Toast.show('Erro ao enviar solicitação.', 'error'); return; }
@@ -522,7 +540,7 @@ export const TodayCtrl = {
     setAppState({
       insertRequests: [...AppState.insertRequests, {
         id, member_id: memberId, member_name: memberName,
-        title, type, shift, priority, scheduled_date, event_time, justification,
+        title, type, shift, priority, scheduled_date, event_time, event_color, justification,
         created_at: new Date().toISOString(),
       }],
     });

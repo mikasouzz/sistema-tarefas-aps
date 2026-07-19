@@ -19,6 +19,12 @@ const TYPE_DOT = {
   reuniao:     'bg-rose-500',
   suporte:     'bg-cyan-500',
 };
+const EVENT_COLOR_OPTS = [
+  { v: 'rosa',    l: 'Rosa',    dot: 'bg-pink-500' },
+  { v: 'azul',    l: 'Azul',    dot: 'bg-blue-500' },
+  { v: 'amarelo', l: 'Amarelo', dot: 'bg-amber-400' },
+  { v: 'cinza',   l: 'Cinza',   dot: 'bg-slate-400' },
+];
 const TYPE_LABEL  = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
 const SHIFT_ORDER  = { manha: 0, tarde: 1, livre: 2 };
 const SHIFT_HEADER = {
@@ -568,6 +574,14 @@ export const CalendarCtrl = {
                  focus:outline-none focus:border-primary transition-colors"
           ${needTime ? 'required' : ''}>
       </div>
+      <div id="${pid}cal-color-wrap" class="${needTime ? '' : 'hidden'}">
+        <label class="block text-xs text-slate-400 mb-1">Cor na agenda</label>
+        <select id="${pid}cal-color"
+          class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                 focus:outline-none focus:border-primary transition-colors">
+          ${EVENT_COLOR_OPTS.map(o => `<option value="${o.v}" ${task?.event_color === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}
+        </select>
+      </div>
       ${isNew ? `
       <div id="${pid}cal-members-wrap" class="hidden">
         <div class="flex items-center justify-between mb-1.5">
@@ -688,6 +702,7 @@ export const CalendarCtrl = {
     const needs = type === 'treinamento' || type === 'reuniao';
     wrap?.classList.toggle('hidden', !needs);
     if (input) input.required = needs;
+    document.getElementById(`${prefix}cal-color-wrap`)?.classList.toggle('hidden', !needs);
     document.getElementById(`${prefix}cal-members-wrap`)?.classList.toggle('hidden', !needs);
   },
 
@@ -710,6 +725,10 @@ export const CalendarCtrl = {
     const time     = !timeWrap?.classList.contains('hidden')
       ? document.getElementById(`${pid}cal-time`)?.value
       : null;
+    const colorWrap = document.getElementById(`${pid}cal-color-wrap`);
+    const color    = !colorWrap?.classList.contains('hidden')
+      ? document.getElementById(`${pid}cal-color`)?.value
+      : null;
     const membersWrap = document.getElementById(`${pid}cal-members-wrap`);
     let memberIds = [this._cellMemberId];
     if (membersWrap && !membersWrap.classList.contains('hidden')) {
@@ -721,6 +740,7 @@ export const CalendarCtrl = {
       shift:    document.getElementById(`${pid}cal-shift`)?.value,
       type,
       time,
+      color,
       memberIds,
     };
   },
@@ -728,11 +748,11 @@ export const CalendarCtrl = {
   async addTask(e) {
     e.preventDefault();
     const title = document.getElementById('cal-title').value.trim();
-    const { priority, shift, type, time, memberIds } = this._getFormValues();
+    const { priority, shift, type, time, color, memberIds } = this._getFormValues();
     if ((type === 'treinamento' || type === 'reuniao') && !time) {
       window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
     }
-    await this._saveTask({ title, priority, shift, type, time, demandId: null, memberIds });
+    await this._saveTask({ title, priority, shift, type, time, color, demandId: null, memberIds });
   },
 
   async addTaskFromBank(e) {
@@ -741,14 +761,14 @@ export const CalendarCtrl = {
       window.Toast.show('Selecione uma demanda do banco.', 'warning'); return;
     }
     const demand = this._demands.find(d => d.id === this._selectedDemandId);
-    const { priority, shift, type, time, memberIds } = this._getFormValues('bank');
+    const { priority, shift, type, time, color, memberIds } = this._getFormValues('bank');
     if ((type === 'treinamento' || type === 'reuniao') && !time) {
       window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
     }
-    await this._saveTask({ title: demand.title, priority, shift, type, time, demandId: this._selectedDemandId, memberIds });
+    await this._saveTask({ title: demand.title, priority, shift, type, time, color, demandId: this._selectedDemandId, memberIds });
   },
 
-  async _saveTask({ title, priority, shift, type, time, demandId, memberIds }) {
+  async _saveTask({ title, priority, shift, type, time, color, demandId, memberIds }) {
     memberIds = memberIds?.length ? memberIds : [this._cellMemberId];
     const grupoId = memberIds.length > 1 ? window.App.generateId() : null;
 
@@ -761,6 +781,7 @@ export const CalendarCtrl = {
       shift,
       type,
       event_time:     time || null,
+      event_color:    color || null,
       demand_id:      demandId || null,
       group_id:       grupoId,
       status:         'pending',
@@ -783,11 +804,11 @@ export const CalendarCtrl = {
   async updateTask(e, taskId) {
     e.preventDefault();
     const title = document.getElementById('cal-title').value.trim();
-    const { priority, shift, type, time } = this._getFormValues();
+    const { priority, shift, type, time, color } = this._getFormValues();
     if ((type === 'treinamento' || type === 'reuniao') && !time) {
       window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
     }
-    const patch = { title, priority, shift, type, event_time: time || null };
+    const patch = { title, priority, shift, type, event_time: time || null, event_color: color || null };
     const query = this._editGroup && this._editGroupId
       ? db.from('tb_aps_tasks').update(patch).eq('group_id', this._editGroupId)
       : db.from('tb_aps_tasks').update(patch).eq('id', taskId);

@@ -7,6 +7,12 @@ const TYPE_BADGE = {
   treinamento: 'bg-teal-900/50 text-teal-300 border-teal-700',
   reuniao:     'bg-violet-900/50 text-violet-300 border-violet-700',
 };
+const EVENT_COLOR_CARD_BG = {
+  rosa:    'bg-pink-900/40 border-pink-700/70',
+  azul:    'bg-blue-900/40 border-blue-700/70',
+  amarelo: 'bg-yellow-500/30 border-yellow-400/70',
+  cinza:   'bg-zinc-400/30 border-zinc-300/60',
+};
 
 function getWeekDays(monday) {
   return Array.from({ length: 5 }, (_, i) => {
@@ -146,6 +152,7 @@ export const AgendaCtrl = {
   _card(group) {
     const isPrincipal = group.priority === 'principal';
     const badgeCls    = TYPE_BADGE[group.type] || 'bg-slate-700 text-slate-300 border-slate-600';
+    const cardBg      = EVENT_COLOR_CARD_BG[group.event_color] || 'bg-slate-700/60 border-slate-600/80';
     const VISIBLE     = 4;
     const extra       = group.members.length - VISIBLE;
 
@@ -161,7 +168,7 @@ export const AgendaCtrl = {
       : '';
 
     return `
-      <div class="bg-slate-700/60 border border-slate-600/80 rounded p-2 flex flex-col gap-1.5
+      <div class="${cardBg} border rounded p-2 flex flex-col gap-1.5
                   ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-center justify-between gap-1">
           ${group.event_time
