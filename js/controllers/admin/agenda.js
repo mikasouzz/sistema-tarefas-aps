@@ -17,6 +17,12 @@ const EVENT_COLOR_LEGEND = [
 ];
 const SHIFTS = ['manha', 'tarde'];
 const SHIFT_LABEL = { manha: 'Manhã', tarde: 'Tarde' };
+const PLAN_LABEL = { quinzenal: 'Quinzenal', semanal: 'Semanal', mensal: 'Mensal' };
+const PLAN_COLOR = {
+  mensal:    'bg-violet-900/40 border-violet-700 text-violet-300',
+  quinzenal: 'bg-blue-900/40 border-blue-700 text-blue-300',
+  semanal:   'bg-orange-900/40 border-orange-700 text-orange-300',
+};
 
 function getWeekDays(monday) {
   return Array.from({ length: 5 }, (_, i) => {
@@ -80,6 +86,11 @@ export const AgendaCtrl = {
               class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm transition-colors">
               Hoje
             </button>
+            ${AppState.view === 'free' ? `
+              <button onclick="AgendaCtrl.openOneOnOneModal()"
+                class="flex items-center gap-2 bg-primary hover:bg-violet-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                <i class="fa-solid fa-comments"></i> Agenda de One a One
+              </button>` : ''}
           </div>
         </div>
 
@@ -168,6 +179,60 @@ export const AgendaCtrl = {
     mon.setHours(0, 0, 0, 0);
     this._weekStart = mon;
     this._render();
+  },
+
+  openOneOnOneModal() {
+    const members = AppState.members
+      .filter(m => m.active && m.one_on_one_plan)
+      .map(m => ({
+        member: m,
+        entries: AppState.oneOnOnes
+          .filter(o => o.member_id === m.id)
+          .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
+      }));
+
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="AgendaCtrl._backdropClickOneOnOne(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-6 shrink-0">
+            <h3 class="text-lg font-bold text-white">Agenda de One a One</h3>
+            <button onclick="AgendaCtrl.closeOneOnOneModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3">
+            ${members.length === 0
+              ? `<p class="text-center text-slate-500 text-sm py-8">Nenhum colaborador com plano de 1:1 cadastrado.</p>`
+              : members.map(({ member: m, entries }) => `
+                  <div class="bg-slate-700/40 border border-slate-600 rounded-xl p-3.5">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-sm font-medium text-white">${m.name}</span>
+                      <span class="text-[9px] px-1.5 py-0.5 rounded-full border shrink-0 ${PLAN_COLOR[m.one_on_one_plan] || 'bg-slate-700 border-slate-600 text-slate-300'}">${PLAN_LABEL[m.one_on_one_plan] || m.one_on_one_plan}</span>
+                    </div>
+                    ${entries.length === 0
+                      ? `<p class="text-xs text-slate-500">Nenhuma 1:1 agendada.</p>`
+                      : `<div class="flex flex-col gap-1.5">
+                          ${entries.map(o => `
+                            <div class="flex items-center gap-2 text-xs text-slate-300">
+                              <i class="fa-solid fa-calendar-day text-slate-500 text-[10px]"></i>
+                              ${fmtShort(new Date(o.date + 'T00:00:00'))}${o.time ? ` · ${o.time.slice(0, 5)}` : ''}
+                            </div>`).join('')}
+                        </div>`}
+                  </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  },
+
+  closeOneOnOneModal() {
+    document.getElementById('modal-container').innerHTML = '';
+  },
+
+  _backdropClickOneOnOne(e) {
+    if (e.target === e.currentTarget) this.closeOneOnOneModal();
   },
 };
 window.AgendaCtrl = AgendaCtrl;

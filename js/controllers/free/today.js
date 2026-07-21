@@ -295,6 +295,7 @@ export const TodayCtrl = {
 
     const absence    = AppState.absences?.find(a => a.member_id === memberId && a.date === todayStr());
     const ABSENCE_LABEL = { manha: 'pela manhã', tarde: 'pela tarde', dia_todo: 'o dia todo' };
+    const oneOnOneToday = AppState.oneOnOnes?.find(o => o.member_id === memberId && o.date === todayStr());
 
     const dividerClass = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
 
@@ -340,6 +341,14 @@ export const TodayCtrl = {
           <div class="px-4 py-2 bg-rose-900/20 border-b border-rose-700/40 flex items-center gap-1.5">
             <i class="fa-solid fa-user-slash text-rose-400 text-xs"></i>
             <span class="text-xs text-rose-300">Ausente ${ABSENCE_LABEL[absence.shift] || ''}</span>
+          </div>` : ''}
+        ${oneOnOneToday ? `
+          <div class="px-4 py-2 bg-cyan-900/20 border-b border-cyan-700/40 flex items-center gap-1.5">
+            <i class="fa-solid fa-comments text-cyan-400 text-xs"></i>
+            <span class="text-xs text-cyan-300">
+              Hoje você tem Reunião de one a one${oneOnOneToday.time ? ` às ${oneOnOneToday.time.slice(0, 5)}` : ''}
+            </span>
+            <i class="fa-solid fa-bell fa-shake text-amber-400 text-xs"></i>
           </div>` : ''}
         <div class="flex flex-col gap-2 p-3">
           ${group.tasks.map(t => this._card(t)).join('')}
