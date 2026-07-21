@@ -32,3 +32,34 @@ export function weekInputVal(monday) {
   const weekNum = Math.ceil(((d - startOfWeek) / 86400000 + 1) / 7);
   return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
+
+// Returns the Monday-start weeks (as { start, end } Date pairs) that cover
+// every day of the given month, in order.
+export function getWeeksOfMonth(year, month) {
+  const first = new Date(year, month, 1);
+  const last  = new Date(year, month + 1, 0);
+  const weeks = [];
+  let cursor = getMondayOf(first);
+  while (cursor <= last) {
+    const start = new Date(cursor);
+    const end   = new Date(cursor);
+    end.setDate(end.getDate() + 6);
+    weeks.push({ start, end });
+    cursor = new Date(cursor);
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return weeks;
+}
+
+// Index (0-based) of the Monday-start week (within its month's week list)
+// that contains the given date string 'YYYY-MM-DD'.
+export function weekOfMonthIndex(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date  = new Date(y, m - 1, d);
+  const weeks = getWeeksOfMonth(y, m - 1);
+  return weeks.findIndex(w => date >= w.start && date <= w.end);
+}
+
+export function monthInputVal(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}

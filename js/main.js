@@ -21,5 +21,6 @@ import './controllers/admin/notices.js';
 import './controllers/admin/backup.js';
 import './controllers/admin/requests.js';
 import './controllers/admin/agenda.js';
+import './controllers/admin/oneOnOne.js';
 
 window.onload = () => App.init();
