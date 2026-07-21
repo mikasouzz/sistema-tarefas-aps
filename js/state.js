@@ -11,6 +11,7 @@ export let AppState = {
   requests: [],
   insertRequests: [],
   gameScores: [],
+  oneOnOnes: [],
   isAdmin: false,
   selectedWeekStart: getMondayOf(new Date()),
   selectedMemberId: null,

@@ -5,7 +5,7 @@ export const VERSION = 'v1.2';
 
 const FREE_ROUTE  = { today: 'hoje', schedule: 'cronograma', demands: 'demandas', ranking: 'ranking', agenda: 'agenda' };
 const FREE_TAB    = Object.fromEntries(Object.entries(FREE_ROUTE).map(([k, v]) => [v, k]));
-const ADMIN_ROUTE = { dashboard: 'visao-geral', calendar: 'cronograma', team: 'equipe', history: 'historico', bank: 'banco', notices: 'avisos', requests: 'solicitacoes', agenda: 'agenda', backup: 'backup' };
+const ADMIN_ROUTE = { dashboard: 'visao-geral', calendar: 'cronograma', team: 'equipe', history: 'historico', bank: 'banco', notices: 'avisos', requests: 'solicitacoes', agenda: 'agenda', oneOnOne: 'one-a-one', backup: 'backup' };
 const ADMIN_TAB   = Object.fromEntries(Object.entries(ADMIN_ROUTE).map(([k, v]) => [v, k]));
 
 function pendingRequestsCount() {
@@ -19,7 +19,7 @@ export const App = {
   },
 
   async loadData() {
-    const [mRes, tRes, nRes, aRes, rRes, iRes, gRes] = await Promise.all([
+    const [mRes, tRes, nRes, aRes, rRes, iRes, gRes, oRes] = await Promise.all([
       db.from('tb_aps_members').select('*').order('name'),
       db.from('tb_aps_tasks')
         .select('*, tb_aps_members(name, role)')
@@ -30,6 +30,7 @@ export const App = {
       db.from('tb_aps_task_requests').select('*').order('created_at', { ascending: false }),
       db.from('tb_aps_task_insert_requests').select('*').order('created_at', { ascending: false }),
       db.from('tb_aps_game_scores').select('*').order('created_at', { ascending: false }),
+      db.from('tb_aps_one_on_ones').select('*').order('date'),
     ]);
     if (mRes.error) window.Toast?.show('Erro ao carregar membros.', 'error');
     if (tRes.error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
@@ -41,6 +42,7 @@ export const App = {
       requests:       rRes.data || [],
       insertRequests: iRes.data || [],
       gameScores:     gRes.data || [],
+      oneOnOnes:      oRes.data || [],
     });
   },
 
@@ -120,6 +122,7 @@ export const App = {
       if (tab === 'backup')    window.BackupCtrl.init(content);
       if (tab === 'requests')  window.RequestsCtrl.init(content);
       if (tab === 'agenda')    window.AgendaCtrl.init(content);
+      if (tab === 'oneOnOne')  window.OneOnOneCtrl.init(content);
     }
   },
 
@@ -174,6 +177,7 @@ export const App = {
             ${btn('dashboard', 'fa-gauge',             'Visão Geral')}
             ${btn('calendar', 'fa-calendar-alt',      'Cronograma')}
             ${btn('agenda',   'fa-calendar-check',    'Agenda')}
+            ${btn('oneOnOne', 'fa-calendar-check',    'One a One')}
             ${btn('bank',     'fa-database',          'Banco & Estudos')}
             ${btn('team',     'fa-users',             'Equipe')}
             ${btn('notices',  'fa-bell',              'Avisos')}

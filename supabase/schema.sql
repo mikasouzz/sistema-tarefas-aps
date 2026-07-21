@@ -151,6 +151,21 @@ create policy "admin manage tb_aps_notices" on tb_aps_notices for all    using (
 grant select          on public.tb_aps_notices        to anon;
 grant all             on public.tb_aps_notices        to authenticated;
 
+-- TB_APS_ONE_ON_ONES (registro de reuniões 1:1 por colaborador)
+create table if not exists tb_aps_one_on_ones (
+  id         text primary key,
+  member_id  text references tb_aps_members(id) on delete cascade,
+  date       text not null,   -- 'YYYY-MM-DD'
+  created_at timestamptz default now()
+);
+
+alter table tb_aps_one_on_ones enable row level security;
+create policy "anon read tb_aps_one_on_ones"    on tb_aps_one_on_ones for select using (true);
+create policy "admin manage tb_aps_one_on_ones" on tb_aps_one_on_ones for all    using (auth.role() = 'authenticated');
+
+grant select on public.tb_aps_one_on_ones to anon;
+grant all    on public.tb_aps_one_on_ones to authenticated;
+
 grant select          on public.tb_aps_members       to anon;
 grant select, update  on public.tb_aps_tasks          to anon;
 grant select          on public.tb_aps_absences        to anon;
