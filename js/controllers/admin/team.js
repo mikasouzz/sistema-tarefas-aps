@@ -15,6 +15,7 @@ const ROLE_LABEL = {
   analista_sr: 'Analista Sênior',
 };
 const REGIME_LABEL = { estagio: 'Estágio', clt: 'CLT' };
+const ONE_ON_ONE_LABEL = { quinzenal: 'Quinzenal', semanal: 'Semanal', mensal: 'Mensal' };
 
 export const TeamCtrl = {
   _container: null,
@@ -46,13 +47,14 @@ export const TeamCtrl = {
               <th class="text-left px-5 py-3 font-medium">Nome</th>
               <th class="text-left px-5 py-3 font-medium hidden sm:table-cell">Cargo</th>
               <th class="text-left px-5 py-3 font-medium hidden md:table-cell">Regime</th>
+              <th class="text-left px-5 py-3 font-medium hidden lg:table-cell">Plano de 1:1</th>
               <th class="text-left px-5 py-3 font-medium">Situação</th>
               <th class="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-700/60">
             ${members.length === 0
-              ? `<tr><td colspan="5" class="text-center py-10 text-slate-500">Nenhum colaborador cadastrado.</td></tr>`
+              ? `<tr><td colspan="6" class="text-center py-10 text-slate-500">Nenhum colaborador cadastrado.</td></tr>`
               : members.map(m => `
                   <tr class="hover:bg-slate-700/30 transition-colors">
                     <td class="px-5 py-3.5 font-medium text-white">${m.name}</td>
@@ -62,6 +64,11 @@ export const TeamCtrl = {
                         ${m.regime === 'clt' ? 'bg-blue-900/40 border-blue-700 text-blue-300' : 'bg-amber-900/40 border-amber-700 text-amber-300'}">
                         ${REGIME_LABEL[m.regime] || m.regime}
                       </span>
+                    </td>
+                    <td class="px-5 py-3.5 hidden lg:table-cell">
+                      ${m.one_on_one_plan
+                        ? `<span class="text-xs px-2 py-0.5 rounded-full bg-violet-900/40 border border-violet-700 text-violet-300">${ONE_ON_ONE_LABEL[m.one_on_one_plan] || m.one_on_one_plan}</span>`
+                        : '<span class="text-slate-500 text-xs">—</span>'}
                     </td>
                     <td class="px-5 py-3.5">
                       <div class="flex items-center gap-1.5 flex-wrap">
@@ -141,6 +148,15 @@ export const TeamCtrl = {
                 <option value="clt"     ${m?.regime === 'clt'     ? 'selected' : ''}>CLT</option>
               </select>
             </div>
+            <div>
+              <label class="block text-sm text-slate-400 mb-1.5">Plano de 1:1</label>
+              <select id="tf-one-on-one"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                       focus:outline-none focus:border-primary transition-colors">
+                <option value="">Nenhum</option>
+                ${Object.entries(ONE_ON_ONE_LABEL).map(([v, l]) => `<option value="${v}" ${m?.one_on_one_plan === v ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>
+            </div>
             <div class="border-t border-slate-700 pt-4 flex flex-col gap-3">
               <label class="flex items-center gap-2.5 cursor-pointer select-none">
                 <input type="checkbox" id="tf-vacation" onchange="TeamCtrl._toggleVacationDates()"
@@ -201,16 +217,17 @@ export const TeamCtrl = {
     const name           = document.getElementById('tf-name').value.trim();
     const role           = document.getElementById('tf-role').value;
     const regime         = document.getElementById('tf-regime').value;
+    const one_on_one_plan = document.getElementById('tf-one-on-one').value || null;
     const on_vacation    = document.getElementById('tf-vacation').checked;
     const vacation_start = on_vacation ? (document.getElementById('tf-vac-start').value || null) : null;
     const vacation_end   = on_vacation ? (document.getElementById('tf-vac-end').value || null) : null;
 
     let error;
     if (id) {
-      ({ error } = await db.from('tb_aps_members').update({ name, role, regime, on_vacation, vacation_start, vacation_end }).eq('id', id));
+      ({ error } = await db.from('tb_aps_members').update({ name, role, regime, one_on_one_plan, on_vacation, vacation_start, vacation_end }).eq('id', id));
     } else {
       const newId = window.App.generateId();
-      ({ error } = await db.from('tb_aps_members').insert({ id: newId, name, role, regime, active: true, on_vacation, vacation_start, vacation_end }));
+      ({ error } = await db.from('tb_aps_members').insert({ id: newId, name, role, regime, one_on_one_plan, active: true, on_vacation, vacation_start, vacation_end }));
     }
 
     if (error) { window.Toast.show('Erro ao salvar.', 'error'); return; }
