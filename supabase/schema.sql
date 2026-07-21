@@ -9,6 +9,7 @@ create table if not exists tb_aps_members (
   name        text not null,
   role        text not null,   -- 'estagiario' | 'tecnico' | 'analista_jr' | 'analista_pl' | 'analista_sr'
   regime      text not null,   -- 'estagio' | 'clt'
+  one_on_one_plan text,   -- 'quinzenal' | 'semanal' | 'mensal'
   active          boolean default true,
   on_vacation     boolean default false,
   vacation_start  text,   -- 'YYYY-MM-DD'
@@ -44,6 +45,7 @@ create table if not exists tb_aps_tasks (
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS on_vacation BOOLEAN DEFAULT false;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_start TEXT;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_end TEXT;
+-- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS one_on_one_plan TEXT;
 
 -- TB_APS_ABSENCES
 create table if not exists tb_aps_absences (
