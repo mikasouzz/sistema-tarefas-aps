@@ -3,6 +3,11 @@ import { AppState, setAppState } from '../../state.js';
 import { getWeeksOfMonth, weekOfMonthIndex, fmtShort, monthInputVal, toDateStr, todayStr } from '../../utils/date.js';
 
 const PLAN_LABEL = { quinzenal: 'Quinzenal', semanal: 'Semanal', mensal: 'Mensal' };
+const PLAN_COLOR = {
+  mensal:    'bg-violet-900/40 border-violet-700 text-violet-300',
+  quinzenal: 'bg-blue-900/40 border-blue-700 text-blue-300',
+  semanal:   'bg-orange-900/40 border-orange-700 text-orange-300',
+};
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -66,10 +71,13 @@ export const OneOnOneCtrl = {
         </div>
 
         <div class="flex-1 min-h-0 bg-slate-800 border border-slate-700 rounded-xl overflow-auto">
-          <div style="display:grid; grid-template-columns: 180px repeat(${weeks.length}, minmax(160px, 1fr)); min-width: ${180 + weeks.length * 160}px;">
+          <div style="display:grid; grid-template-columns: 160px 110px repeat(${weeks.length}, minmax(160px, 1fr)); min-width: ${270 + weeks.length * 160}px;">
 
             <div class="px-2.5 py-2 border-b border-r border-slate-700 bg-slate-800 sticky top-0 left-0 z-20 flex items-end">
               <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Colaboradores</span>
+            </div>
+            <div class="px-2.5 py-2 border-b border-r border-slate-700 bg-slate-800 sticky top-0 z-20 flex items-end">
+              <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Plano 1:1</span>
             </div>
 
             ${weeks.map((w, i) => {
@@ -82,13 +90,15 @@ export const OneOnOneCtrl = {
             }).join('')}
 
             ${members.length === 0
-              ? `<div style="grid-column: span ${weeks.length + 1};" class="py-12 text-center text-slate-500 text-sm">
+              ? `<div style="grid-column: span ${weeks.length + 2};" class="py-12 text-center text-slate-500 text-sm">
                    Nenhum colaborador com plano de 1:1 definido. Configure em Equipe.
                  </div>`
               : members.map(m => `
-                  <div class="px-2.5 py-2 border-t border-r border-slate-700 bg-slate-800/60 sticky left-0 z-10 flex items-center justify-between gap-1.5">
+                  <div class="px-2.5 py-2 border-t border-r border-slate-700 bg-slate-800/60 sticky left-0 z-10 flex items-center justify-center">
                     <span class="text-xs font-medium text-white truncate">${m.name}</span>
-                    <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-900/40 border border-violet-700 text-violet-300 shrink-0">${PLAN_LABEL[m.one_on_one_plan] || m.one_on_one_plan}</span>
+                  </div>
+                  <div class="px-2.5 py-2 border-t border-r border-slate-700 bg-slate-800/60 flex items-center justify-center">
+                    <span class="text-[9px] px-1.5 py-0.5 rounded-full border shrink-0 ${PLAN_COLOR[m.one_on_one_plan] || 'bg-slate-700 border-slate-600 text-slate-300'}">${PLAN_LABEL[m.one_on_one_plan] || m.one_on_one_plan}</span>
                   </div>
                   ${weeks.map((w, i) => {
                     const cellEntries = entries
