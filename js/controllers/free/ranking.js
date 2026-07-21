@@ -274,15 +274,7 @@ export const RankingCtrl = {
   },
 
   _cardGameHighlights() {
-    const monday = getMondayOf(this._lastWorkDayRef());
-    const friday = new Date(monday); friday.setDate(monday.getDate() + 4);
-    friday.setHours(23, 59, 59, 999);
-    const weekStartMs = monday.getTime();
-    const weekEndMs   = friday.getTime();
-    const scores = (AppState.gameScores || []).filter(s => {
-      const t = new Date(s.created_at).getTime();
-      return t >= weekStartMs && t <= weekEndMs;
-    });
+    const scores = AppState.gameScores || [];
 
     const dinoScores = scores.filter(s => s.game === 'dino').sort((a, b) => b.value - a.value);
     const wsScores   = scores.filter(s => s.game === 'wordsearch').sort((a, b) => a.value - b.value);
@@ -305,11 +297,11 @@ export const RankingCtrl = {
     return `
       <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
         <p class="text-sm font-semibold text-white mb-3 flex items-center gap-1.5">
-          Destaques dos jogos ${infoIcon('Maior pontuação (distância) no jogo do Dino e menor tempo para completar o Caça-palavras, entre quem jogou na semana atual.')}
+          Recordes dos jogos ${infoIcon('Maior pontuação (distância) no jogo do Dino e menor tempo para completar o Caça-palavras, considerando todo o histórico. O recorde só muda quando é superado.')}
         </p>
         <div class="flex flex-col gap-2.5">
-          ${row('fa-person-running', 'Dino · maior distância', dinoTop, ' pts')}
-          ${row('fa-magnifying-glass', 'Caça-palavras · menor tempo', wsTop, 's')}
+          ${row('fa-person-running', 'Dino · recorde de distância', dinoTop, ' pts')}
+          ${row('fa-magnifying-glass', 'Caça-palavras · recorde de tempo', wsTop, 's')}
         </div>
       </div>`;
   },
