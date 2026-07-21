@@ -125,6 +125,21 @@ export const RankingCtrl = {
       const g = memberCounts.get(t.member_id);
       if (g && rankingTypes.includes(t.type)) g[t.type]++;
     }
+    const memberCountsDone = new Map();
+    for (const m of active) {
+      memberCountsDone.set(m.id, Object.fromEntries([['id', m.id], ['name', m.name], ...rankingTypes.map(t => [t, 0])]));
+    }
+    for (const t of allWeekTasks) {
+      if (t.status !== 'done') continue;
+      const g = memberCountsDone.get(t.member_id);
+      if (g && rankingTypes.includes(t.type)) g[t.type]++;
+    }
+    const typeRankingsDone = Object.fromEntries(rankingTypes.map(type => [
+      type,
+      [...memberCountsDone.values()]
+        .sort((a, b) => b[type] - a[type] || a.name.localeCompare(b.name)),
+    ]));
+
     const typeRankings = Object.fromEntries(rankingTypes.map(type => [
       type,
       [...memberCounts.values()]
@@ -200,7 +215,7 @@ export const RankingCtrl = {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           ${this._sectionDonut(typeStats, totalCurr)}
           ${this._sectionEvolucaoMensal(weeklyVolume)}
-          ${this._sectionDestaques(typeRankings)}
+          ${this._sectionDestaques(typeRankingsDone)}
         </div>
 
         <!-- Destaques (operacional/estratégia/analítica) + Rankings: suporte / treinamento / reunião -->
@@ -393,7 +408,7 @@ export const RankingCtrl = {
     return `
       <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 h-full flex flex-col">
         <p class="text-sm font-semibold text-white mb-4 flex items-center gap-1.5">
-          Destaques da semana ${infoIcon('Quem teve mais tarefas de Suporte, Treinamento e Reunião no período selecionado.')}
+          Destaques da semana ${infoIcon('Quem teve mais tarefas concluídas de Suporte, Treinamento e Reunião no período selecionado.')}
         </p>
         <div class="flex flex-col gap-3 flex-1 justify-center">
           ${items.map(({ type, icon }) => {
