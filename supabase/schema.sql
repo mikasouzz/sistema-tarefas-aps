@@ -156,8 +156,12 @@ create table if not exists tb_aps_one_on_ones (
   id         text primary key,
   member_id  text references tb_aps_members(id) on delete cascade,
   date       text not null,   -- 'YYYY-MM-DD'
+  time       text,           -- 'HH:MM'
   created_at timestamptz default now()
 );
+
+-- Se a tabela já existir, rode manualmente:
+-- ALTER TABLE tb_aps_one_on_ones ADD COLUMN IF NOT EXISTS time TEXT;
 
 alter table tb_aps_one_on_ones enable row level security;
 create policy "anon read tb_aps_one_on_ones"    on tb_aps_one_on_ones for select using (true);

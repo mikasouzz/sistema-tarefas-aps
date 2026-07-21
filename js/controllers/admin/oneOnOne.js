@@ -119,7 +119,7 @@ export const OneOnOneCtrl = {
     return `
       <div class="bg-violet-900/40 border border-violet-700/70 rounded px-1.5 py-1 flex items-center justify-between gap-1.5 group">
         <span class="text-[11px] text-violet-200 truncate leading-tight flex items-center gap-1">
-          <i class="fa-solid fa-people-arrows text-[10px]"></i>${fmtShort(new Date(o.date + 'T00:00:00'))}
+          <i class="fa-solid fa-people-arrows text-[10px]"></i>${fmtShort(new Date(o.date + 'T00:00:00'))}${o.time ? ` · ${o.time.slice(0, 5)}` : ''}
         </span>
         <button onclick="OneOnOneCtrl.remove('${o.id}')"
           class="text-violet-300/60 hover:text-danger transition-colors opacity-0 group-hover:opacity-100">
@@ -174,11 +174,19 @@ export const OneOnOneCtrl = {
                   : members.map(m => `<option value="${m.id}">${m.name} (${PLAN_LABEL[m.one_on_one_plan] || m.one_on_one_plan})</option>`).join('')}
               </select>
             </div>
-            <div>
-              <label class="block text-sm text-slate-400 mb-1.5">Data do 1:1</label>
-              <input id="oo-date" type="date" required
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
-                       focus:outline-none focus:border-primary transition-colors">
+            <div class="flex gap-3">
+              <div class="flex-1">
+                <label class="block text-sm text-slate-400 mb-1.5">Data do 1:1</label>
+                <input id="oo-date" type="date" required
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors">
+              </div>
+              <div class="flex-1">
+                <label class="block text-sm text-slate-400 mb-1.5">Horário</label>
+                <input id="oo-time" type="time"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors">
+              </div>
             </div>
             <div class="flex gap-3 mt-2">
               <button type="button" onclick="OneOnOneCtrl.closeForm()"
@@ -207,10 +215,11 @@ export const OneOnOneCtrl = {
     e.preventDefault();
     const member_id = document.getElementById('oo-member').value;
     const date       = document.getElementById('oo-date').value;
+    const time       = document.getElementById('oo-time').value || null;
     if (!member_id || !date) return;
 
     const id = window.App.generateId();
-    const { error } = await db.from('tb_aps_one_on_ones').insert({ id, member_id, date });
+    const { error } = await db.from('tb_aps_one_on_ones').insert({ id, member_id, date, time });
     if (error) { window.Toast.show('Erro ao agendar 1:1.', 'error'); return; }
 
     const { data } = await db.from('tb_aps_one_on_ones').select('*').order('date');
