@@ -119,7 +119,7 @@ export const RankingCtrl = {
     const rankingTypes = ['suporte', 'treinamento', 'reuniao', 'operacional', 'estrategia', 'analitica'];
     const memberCounts = new Map();
     for (const m of active) {
-      memberCounts.set(m.id, Object.fromEntries([['name', m.name], ...rankingTypes.map(t => [t, 0])]));
+      memberCounts.set(m.id, Object.fromEntries([['id', m.id], ['name', m.name], ...rankingTypes.map(t => [t, 0])]));
     }
     for (const t of allWeekTasks) {
       const g = memberCounts.get(t.member_id);
@@ -421,15 +421,16 @@ export const RankingCtrl = {
   _cardTypeLeader(type, ranking, icon) {
     const leader = ranking?.[0];
     const hasScore = leader && leader[type] > 0;
+    const isSelected = leader && this._selectedMemberId !== 'all' && leader.id === this._selectedMemberId;
     return `
-      <div class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 flex items-center gap-2">
+      <div class="bg-slate-800 border ${isSelected ? 'border-primary' : 'border-slate-700'} rounded-lg px-3 py-2 flex items-center gap-2">
         <span class="w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${TYPE_BAR[type]}/20 border border-slate-600">
           <i class="fa-solid ${icon} text-slate-300 text-[10px]"></i>
         </span>
         <p class="text-xs min-w-0 truncate flex-1">
           <span class="text-slate-500">${TYPE_LABEL[type]}:</span>
           ${hasScore
-            ? `<span class="text-white font-medium">${leader.name}</span> <span class="text-slate-400">· ${leader[type]}</span>`
+            ? `<span class="${isSelected ? 'text-primary' : 'text-white'} font-medium">${leader.name}</span> <span class="text-slate-400">· ${leader[type]}</span>`
             : `<span class="text-slate-500">sem dados</span>`}
         </p>
         ${infoIcon(`Membro com mais tarefas do tipo ${TYPE_LABEL[type]} no período selecionado.`)}
@@ -450,18 +451,21 @@ export const RankingCtrl = {
         ${ranking.length === 0
           ? `<p class="text-slate-500 text-xs text-center py-4">Nenhum membro ativo.</p>`
           : `<div class="flex flex-col gap-1.5">
-               ${ranking.map((g, i) => `
+               ${ranking.map((g, i) => {
+                 const isSelected = this._selectedMemberId !== 'all' && g.id === this._selectedMemberId;
+                 return `
                  <div>
                    <div class="flex items-center justify-between mb-0.5">
-                     <span class="text-[11px] text-slate-300 truncate flex items-center gap-1">
-                       <span class="text-slate-500 font-semibold shrink-0">${i + 1}º</span>${g.name}
+                     <span class="text-[11px] ${isSelected ? 'text-white font-semibold' : 'text-slate-300'} truncate flex items-center gap-1">
+                       <span class="${isSelected ? 'text-primary' : 'text-slate-500'} font-semibold shrink-0">${i + 1}º</span>${g.name}
                      </span>
-                     <span class="text-[11px] font-medium text-white shrink-0">${g[type]}</span>
+                     <span class="text-[11px] font-medium ${isSelected ? 'text-primary' : 'text-white'} shrink-0">${g[type]}</span>
                    </div>
                    <div class="w-full bg-slate-700 rounded-full h-1">
-                     <div class="h-1 rounded-full ${barCls}" style="width:${max > 0 ? Math.round((g[type] / max) * 100) : 0}%"></div>
+                     <div class="h-1 rounded-full ${isSelected ? 'bg-primary' : barCls}" style="width:${max > 0 ? Math.round((g[type] / max) * 100) : 0}%"></div>
                    </div>
-                 </div>`).join('')}
+                 </div>`;
+               }).join('')}
              </div>`}
       </div>`;
   },
