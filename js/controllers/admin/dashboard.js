@@ -16,6 +16,10 @@ function fmtShort(str) {
 
 const DAY_NAMES   = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+function infoIcon(text) {
+  return `<i class="fa-solid fa-circle-info text-slate-500 hover:text-slate-300 text-[11px] cursor-help transition-colors" title="${text}"></i>`;
+}
+
 export const AdminDashCtrl = {
   _container: null,
 
@@ -74,6 +78,15 @@ export const AdminDashCtrl = {
       return (a.event_time || '').localeCompare(b.event_time || '');
     });
 
+    // Inserção de tarefas por membro (solicitações, histórico completo)
+    const insertByMember = new Map();
+    for (const m of active) insertByMember.set(m.id, { name: m.name, total: 0 });
+    for (const r of AppState.insertRequests || []) {
+      const g = insertByMember.get(r.member_id);
+      if (g) g.total++;
+    }
+    const insertStats = [...insertByMember.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
     this._container.innerHTML = `
       <div class="flex-1 flex flex-col min-h-0">
         <div class="mb-6 shrink-0 flex items-center justify-between">
@@ -101,6 +114,9 @@ export const AdminDashCtrl = {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               ${this._cardOverdue(overdueByMember)}
               ${this._cardTimeMismatch(timeMismatch)}
+            </div>
+            <div>
+              ${this._sectionInsertsPorMembro(insertStats)}
             </div>
           </div>
         </div>
@@ -292,6 +308,35 @@ export const AdminDashCtrl = {
       ? { cls: 'bg-orange-900/40 border border-orange-600 text-orange-300', label: mismatches.length }
       : null;
     return this._card('fa-clock', 'text-orange-400', 'Conflito Turno × Horário', badge, content);
+  },
+
+  _sectionInsertsPorMembro(insertStats) {
+    const withData = insertStats.filter(g => g.total > 0);
+    const max = Math.max(1, ...insertStats.map(g => g.total));
+    return `
+      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+        <p class="text-sm font-semibold text-white mb-1 flex items-center gap-1.5">
+          Inserção de tarefas por membro ${infoIcon('Quantidade de vezes que cada membro solicitou a inclusão de uma nova tarefa (botão "Solicitar nova tarefa"), considerando todo o histórico.')}
+        </p>
+        <p class="text-xs text-slate-500 mb-4">Solicitações de nova tarefa (histórico completo)</p>
+        ${withData.length === 0
+          ? `<p class="text-slate-500 text-sm text-center py-8">Nenhuma solicitação registrada.</p>`
+          : `<div class="overflow-x-auto pb-1">
+               <div class="flex items-end gap-4" style="min-height:140px">
+                 ${insertStats.map(g => {
+                   const heightPct = g.total > 0 ? Math.max(6, Math.round((g.total / max) * 100)) : 0;
+                   return `
+                     <div class="flex flex-col items-center gap-1.5 shrink-0" style="width:44px">
+                       <span class="text-xs font-medium text-white">${g.total}</span>
+                       <div class="w-full flex items-end" style="height:100px">
+                         <div class="w-full bg-primary/70 rounded-t-md transition-all duration-500" style="height:${heightPct}%"></div>
+                       </div>
+                       <span class="text-[10px] text-slate-400 truncate w-full text-center" title="${g.name}">${g.name}</span>
+                     </div>`;
+                 }).join('')}
+               </div>
+             </div>`}
+      </div>`;
   },
 
 };

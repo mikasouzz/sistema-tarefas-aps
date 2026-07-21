@@ -131,17 +131,6 @@ export const RankingCtrl = {
         .sort((a, b) => b[type] - a[type] || a.name.localeCompare(b.name)),
     ]));
 
-    // ── Inserção de tarefas por membro (solicitações) ────────────────────────
-    const insertByMember = new Map();
-    for (const m of active) insertByMember.set(m.id, { name: m.name, total: 0 });
-    for (const r of AppState.insertRequests || []) {
-      const created = (r.created_at || '').slice(0, 10);
-      if (created < weekStart || created > weekEnd) continue;
-      const g = insertByMember.get(r.member_id);
-      if (g) g.total++;
-    }
-    const insertStats = [...insertByMember.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
-
     // ── Distribuição de demandas do banco por membro ─────────────────────────
     const bankByMember = new Map();
     for (const t of allWeekTasks) {
@@ -227,11 +216,6 @@ export const RankingCtrl = {
           ${this._sectionRankingTipo('suporte',     typeRankings.suporte,     'fa-headset')}
           ${this._sectionRankingTipo('treinamento', typeRankings.treinamento, 'fa-chalkboard-user')}
           ${this._sectionRankingTipo('reuniao',      typeRankings.reuniao,    'fa-users')}
-        </div>
-
-        <!-- Gráfico: inserção de tarefas por membro -->
-        <div>
-          ${this._sectionInsertsPorMembro(insertStats)}
         </div>
       </div>`;
   },
@@ -478,37 +462,6 @@ export const RankingCtrl = {
                      <div class="h-1 rounded-full ${barCls}" style="width:${max > 0 ? Math.round((g[type] / max) * 100) : 0}%"></div>
                    </div>
                  </div>`).join('')}
-             </div>`}
-      </div>`;
-  },
-
-  // ── Seção: inserção de tarefas por membro ───────────────────────────────────
-
-  _sectionInsertsPorMembro(insertStats) {
-    const withData = insertStats.filter(g => g.total > 0);
-    const max = Math.max(1, ...insertStats.map(g => g.total));
-    return `
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
-        <p class="text-sm font-semibold text-white mb-1 flex items-center gap-1.5">
-          Inserção de tarefas por membro ${infoIcon('Quantidade de vezes que cada membro solicitou a inclusão de uma nova tarefa (botão "Solicitar nova tarefa") no período selecionado.')}
-        </p>
-        <p class="text-xs text-slate-500 mb-4">Solicitações de nova tarefa no período</p>
-        ${withData.length === 0
-          ? `<p class="text-slate-500 text-sm text-center py-8">Nenhuma solicitação no período.</p>`
-          : `<div class="overflow-x-auto pb-1">
-               <div class="flex items-end gap-4" style="min-height:140px">
-                 ${insertStats.map(g => {
-                   const heightPct = g.total > 0 ? Math.max(6, Math.round((g.total / max) * 100)) : 0;
-                   return `
-                     <div class="flex flex-col items-center gap-1.5 shrink-0" style="width:44px">
-                       <span class="text-xs font-medium text-white">${g.total}</span>
-                       <div class="w-full flex items-end" style="height:100px">
-                         <div class="w-full bg-primary/70 rounded-t-md transition-all duration-500" style="height:${heightPct}%"></div>
-                       </div>
-                       <span class="text-[10px] text-slate-400 truncate w-full text-center" title="${g.name}">${g.name}</span>
-                     </div>`;
-                 }).join('')}
-               </div>
              </div>`}
       </div>`;
   },
