@@ -180,7 +180,8 @@ export const TodayCtrl = {
           const c = counts[type];
           const total = c.manha + c.tarde + c.livre;
           return `
-          <div class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+          <button type="button" onclick="TodayCtrl._openIndicatorModal('${type}')"
+            class="text-left bg-slate-800 border border-slate-700 hover:border-primary/60 rounded-xl p-4 transition-colors">
             <div class="flex items-center gap-2 mb-3">
               <div class="w-8 h-8 rounded-lg border ${iconClass} flex items-center justify-center shrink-0">
                 <i class="fa-solid ${icon} text-xs"></i>
@@ -204,9 +205,63 @@ export const TodayCtrl = {
                 <p class="text-[10px] text-slate-500 uppercase tracking-wide">Livre</p>
               </div>
             </div>
-          </div>`;
+          </button>`;
         }).join('')}
       </div>`;
+  },
+
+  _openIndicatorModal(type) {
+    const meta  = INDICATOR_TYPES.find(i => i.type === type);
+    const SHIFT_ORDER = { manha: 0, dia_todo: 0.5, tarde: 1, livre: 2 };
+    const SHIFT_NAME   = { manha: 'Manhã', tarde: 'Tarde', dia_todo: 'Dia todo', livre: 'Livre' };
+    const people = this.tasks
+      .filter(t => t.type === type)
+      .map(t => ({
+        name:  t.tb_aps_members?.name || '—',
+        shift: t.shift,
+        title: t.title,
+      }))
+      .sort((a, b) => (SHIFT_ORDER[a.shift] ?? 99) - (SHIFT_ORDER[b.shift] ?? 99) || a.name.localeCompare(b.name));
+
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="TodayCtrl._indicatorModalBackdrop(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-y-auto max-h-[80vh]"
+             onclick="event.stopPropagation()">
+          <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between gap-2 sticky top-0 bg-slate-800">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-8 h-8 rounded-lg border ${meta?.iconClass || ''} flex items-center justify-center shrink-0">
+                <i class="fa-solid ${meta?.icon || ''} text-xs"></i>
+              </div>
+              <p class="font-semibold text-white text-sm truncate">${meta?.label || type}</p>
+            </div>
+            <button onclick="TodayCtrl._closeIndicatorModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors shrink-0">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="p-3 flex flex-col gap-2">
+            ${people.length === 0
+              ? `<p class="text-center text-slate-500 text-sm py-8">Ninguém nesta atividade hoje.</p>`
+              : people.map(p => `
+                  <div class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-white truncate">${p.name}</p>
+                      <p class="text-xs text-slate-400 truncate">${p.title}</p>
+                    </div>
+                    ${SHIFT_HTML[p.shift] || `<span class="text-xs text-slate-500 shrink-0">${SHIFT_NAME[p.shift] || ''}</span>`}
+                  </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  },
+
+  _closeIndicatorModal() {
+    document.getElementById('modal-container').innerHTML = '';
+  },
+
+  _indicatorModalBackdrop(e) {
+    if (e.target === e.currentTarget) this._closeIndicatorModal();
   },
 
   _groupByMember() {
