@@ -7,6 +7,7 @@ const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrateg
 const SHIFT_BADGE = {
   manha: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
   tarde: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-orange-400/20 text-orange-400"><i class="fa-solid fa-cloud-sun text-xs"></i>Tarde</span>',
+  dia_todo: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-fuchsia-400/20 text-fuchsia-400"><i class="fa-solid fa-calendar-day text-xs"></i>Dia todo</span>',
   livre: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-teal-400/20 text-teal-400"><i class="fa-solid fa-clock text-xs"></i>Livre</span>',
 };
 
@@ -121,7 +122,7 @@ export const ScheduleCtrl = {
       const absDay   = absence?.shift === 'dia_todo';
       const onVacation = member.on_vacation && member.vacation_start && member.vacation_end
         && dateStr >= member.vacation_start && dateStr <= member.vacation_end;
-      const SHIFT_ORDER = { manha: 0, tarde: 1, livre: 2 };
+      const SHIFT_ORDER = { manha: 0, dia_todo: 0.5, tarde: 1, livre: 2 };
       const dayTasks = memberTasks
         .filter(t => t.scheduled_date === dateStr)
         .sort((a, b) => {

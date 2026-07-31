@@ -26,7 +26,7 @@ const EVENT_COLOR_OPTS = [
   { v: 'cinza',   l: 'Cinza',   dot: 'bg-slate-400' },
 ];
 const TYPE_LABEL  = Object.fromEntries(TYPE_OPTS.map(o => [o.v, o.l]));
-const SHIFT_ORDER  = { manha: 0, tarde: 1, livre: 2 };
+const SHIFT_GROUPS = ['manha', 'tarde', 'livre'];
 const SHIFT_HEADER = {
   manha: '<div class="flex items-center gap-1 mt-1.5 first:mt-0 mb-0.5"><i class="fa-solid fa-sun text-amber-400 text-[9px]"></i><span class="text-[9px] font-semibold text-amber-400 uppercase tracking-wide">Manhã</span></div>',
   tarde: '<div class="flex items-center gap-1 mt-1.5 mb-0.5"><i class="fa-solid fa-cloud-sun text-orange-400 text-[9px]"></i><span class="text-[9px] font-semibold text-orange-400 uppercase tracking-wide">Tarde</span></div>',
@@ -123,14 +123,7 @@ export const CalendarCtrl = {
                       : dateStr >= m.vacation_start && dateStr <= m.vacation_end
                   );
                   const dayTasks = weekTasks
-                    .filter(t => t.member_id === m.id && t.scheduled_date === dateStr)
-                    .sort((a, b) => {
-                      const sd = (SHIFT_ORDER[a.shift] ?? 99) - (SHIFT_ORDER[b.shift] ?? 99);
-                      if (sd !== 0) return sd;
-                      if (a.priority === 'principal' && b.priority !== 'principal') return -1;
-                      if (a.priority !== 'principal' && b.priority === 'principal') return  1;
-                      return 0;
-                    });
+                    .filter(t => t.member_id === m.id && t.scheduled_date === dateStr);
                   const absence  = AppState.absences.find(a => a.member_id === m.id && a.date === dateStr);
                   const absDay   = absence?.shift === 'dia_todo';
                   const absBanner = absence && !absDay
@@ -161,17 +154,26 @@ export const CalendarCtrl = {
                         ? `<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                              <i class="fa-solid fa-plus text-slate-500"></i>
                            </div>`
-                        : dayTasks.map((t, idx) => `
-                            ${t.shift !== (dayTasks[idx - 1]?.shift) ? (SHIFT_HEADER[t.shift] || '') : ''}
-                            <div class="flex items-center gap-1.5 mb-1 group/task ${t.status === 'done' ? 'opacity-40' : ''}">
-                              <button onclick="event.stopPropagation(); CalendarCtrl.toggleStatus('${t.id}','${t.status}')"
-                                class="shrink-0 transition-colors ${t.status === 'done' ? 'text-accent' : 'text-slate-600 hover:text-accent'}">
-                                <i class="fa-solid ${t.status === 'done' ? 'fa-circle-check' : 'fa-circle'} text-[10px]"></i>
-                              </button>
-                              <span class="text-xs text-slate-300 truncate ${t.status === 'done' ? 'line-through' : ''}">
-                                ${t.demand_id ? '<i class="fa-solid fa-link text-[8px] text-slate-500 mr-0.5"></i>' : ''}${t.title}
-                              </span>
-                            </div>`).join('')}
+                        : SHIFT_GROUPS.map(shift => {
+                            const group = dayTasks
+                              .filter(t => t.shift === shift || (shift !== 'livre' && t.shift === 'dia_todo'))
+                              .sort((a, b) => {
+                                if (a.priority === 'principal' && b.priority !== 'principal') return -1;
+                                if (a.priority !== 'principal' && b.priority === 'principal') return  1;
+                                return 0;
+                              });
+                            if (group.length === 0) return '';
+                            return (SHIFT_HEADER[shift] || '') + group.map(t => `
+                              <div class="flex items-center gap-1.5 mb-1 group/task ${t.status === 'done' ? 'opacity-40' : ''}">
+                                <button onclick="event.stopPropagation(); CalendarCtrl.toggleStatus('${t.id}','${t.status}')"
+                                  class="shrink-0 transition-colors ${t.status === 'done' ? 'text-accent' : 'text-slate-600 hover:text-accent'}">
+                                  <i class="fa-solid ${t.status === 'done' ? 'fa-circle-check' : 'fa-circle'} text-[10px]"></i>
+                                </button>
+                                <span class="text-xs text-slate-300 truncate ${t.status === 'done' ? 'line-through' : ''}">
+                                  ${t.demand_id ? '<i class="fa-solid fa-link text-[8px] text-slate-500 mr-0.5"></i>' : ''}${t.title}
+                                </span>
+                              </div>`).join('');
+                          }).join('')}
                     </div>`;
                 }).join('')}
               `).join('')}
@@ -555,6 +557,7 @@ export const CalendarCtrl = {
                    focus:outline-none focus:border-primary transition-colors">
             <option value="manha" ${task?.shift === 'manha' ? 'selected' : ''}>Manhã</option>
             <option value="tarde" ${task?.shift === 'tarde' ? 'selected' : ''}>Tarde</option>
+            <option value="dia_todo" ${task?.shift === 'dia_todo' ? 'selected' : ''}>Dia todo</option>
             <option value="livre" ${task?.shift === 'livre' ? 'selected' : ''}>Livre</option>
           </select>
         </div>
@@ -918,7 +921,7 @@ export const CalendarCtrl = {
       const dayTasks  = tasks.filter(t => t.member_id === memberId && t.scheduled_date === dateStr);
       if (dayTasks.length === 0) return `<td><span class="empty">—</span></td>`;
       const rows = SHIFTS.flatMap(shift => {
-        const st = dayTasks.filter(t => t.shift === shift);
+        const st = dayTasks.filter(t => t.shift === shift || (shift !== 'livre' && t.shift === 'dia_todo'));
         if (st.length === 0) return [];
         return [
           `<p class="shift-lbl">${SHIFT_LABEL[shift]}</p>`,

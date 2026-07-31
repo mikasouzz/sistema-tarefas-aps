@@ -24,7 +24,7 @@ create table if not exists tb_aps_tasks (
   member_id        text references tb_aps_members(id) on delete cascade,
   scheduled_date   text,        -- 'YYYY-MM-DD' — null para demandas
   priority         text,        -- 'principal' | 'secundaria'
-  shift            text,        -- 'manha' | 'tarde' | 'livre'
+  shift            text,        -- 'manha' | 'tarde' | 'dia_todo' | 'livre'
   type             text,        -- 'operacional' | 'analitica' | 'estrategia' | 'treinamento' | 'reuniao' | 'suporte'
   event_time       text,        -- 'HH:MM' — apenas treinamento/reunião
   event_color      text,        -- 'rosa' | 'azul' | 'amarelo' | 'cinza' — apenas treinamento/reunião, reflete na Agenda
@@ -82,7 +82,7 @@ create table if not exists tb_aps_task_insert_requests (
   member_name    text not null,
   title          text not null,
   type           text,            -- 'operacional' | 'analitica' | 'estrategia' | 'treinamento' | 'reuniao' | 'suporte'
-  shift          text,            -- 'manha' | 'tarde' | 'livre'
+  shift          text,            -- 'manha' | 'tarde' | 'dia_todo' | 'livre'
   priority       text,            -- 'principal' | 'secundaria'
   scheduled_date text,            -- 'YYYY-MM-DD'
   event_time     text,            -- 'HH:MM'

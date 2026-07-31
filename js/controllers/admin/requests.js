@@ -1,7 +1,7 @@
 import { db } from '../../db.js';
 import { AppState, setAppState } from '../../state.js';
 
-const SHIFT_LABEL    = { manha: 'Manhã', tarde: 'Tarde', livre: 'Livre' };
+const SHIFT_LABEL    = { manha: 'Manhã', tarde: 'Tarde', dia_todo: 'Dia todo', livre: 'Livre' };
 const TYPE_LABEL     = { operacional: 'Operacional', analitica: 'Analítica', estrategia: 'Estratégia', treinamento: 'Treinamento', reuniao: 'Reunião', suporte: 'Suporte' };
 const PRIORITY_LABEL = { principal: 'Principal', secundaria: 'Secundária' };
 

@@ -3,7 +3,7 @@ import { AppState } from '../../state.js';
 import { todayStr } from '../../utils/date.js';
 
 const TYPE_LABEL  = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte' };
-const SHIFT_LABEL = { manha:'Manhã', tarde:'Tarde', livre:'Livre' };
+const SHIFT_LABEL = { manha:'Manhã', tarde:'Tarde', dia_todo:'Dia todo', livre:'Livre' };
 
 export const HistoryCtrl = {
   _container: null,

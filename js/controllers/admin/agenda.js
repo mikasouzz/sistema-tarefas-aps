@@ -133,7 +133,7 @@ export const AgendaCtrl = {
                   ${weekDays.map(d => SHIFTS.map(shift => {
                     const dateStr    = toDateStr(d);
                     const cellEvents = events
-                      .filter(t => t.member_id === m.id && t.scheduled_date === dateStr && t.shift === shift)
+                      .filter(t => t.member_id === m.id && t.scheduled_date === dateStr && (t.shift === shift || t.shift === 'dia_todo'))
                       .sort((a, b) => (a.event_time || '').localeCompare(b.event_time || ''));
                     return `
                       <div class="border-t border-l border-slate-700 px-1 py-1 flex flex-col gap-0.5 min-h-[40px]">

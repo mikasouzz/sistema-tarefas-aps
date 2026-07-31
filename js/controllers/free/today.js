@@ -23,6 +23,7 @@ const TYPE_CLASS = {
 const SHIFT_HTML = {
   manha: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
   tarde: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-orange-400/20 text-orange-400"><i class="fa-solid fa-cloud-sun text-xs"></i>Tarde</span>',
+  dia_todo: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-fuchsia-400/20 text-fuchsia-400"><i class="fa-solid fa-calendar-day text-xs"></i>Dia todo</span>',
   livre: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-teal-400/20 text-teal-400"><i class="fa-solid fa-clock text-xs"></i>Livre</span>',
 };
 const INDICATOR_TYPES = [
@@ -168,7 +169,9 @@ export const TodayCtrl = {
     const counts = {};
     for (const { type } of INDICATOR_TYPES) counts[type] = { manha: 0, tarde: 0, livre: 0 };
     for (const t of this.tasks) {
-      if (counts[t.type] && counts[t.type][t.shift] !== undefined) counts[t.type][t.shift]++;
+      if (!counts[t.type]) continue;
+      if (t.shift === 'dia_todo') { counts[t.type].manha++; counts[t.type].tarde++; }
+      else if (counts[t.type][t.shift] !== undefined) counts[t.type][t.shift]++;
     }
 
     return `
@@ -213,7 +216,7 @@ export const TodayCtrl = {
       if (!map.has(key)) map.set(key, { name: t.tb_aps_members?.name || '—', memberId: key, tasks: [] });
       map.get(key).tasks.push(t);
     }
-    const SHIFT_ORDER = { manha: 0, tarde: 1, livre: 2 };
+    const SHIFT_ORDER = { manha: 0, dia_todo: 0.5, tarde: 1, livre: 2 };
     for (const g of map.values()) {
       g.tasks.sort((a, b) => {
         const shiftDiff = (SHIFT_ORDER[a.shift] ?? 99) - (SHIFT_ORDER[b.shift] ?? 99);
@@ -447,6 +450,7 @@ export const TodayCtrl = {
                   <option value="">—</option>
                   <option value="manha">Manhã</option>
                   <option value="tarde">Tarde</option>
+                  <option value="dia_todo">Dia todo</option>
                   <option value="livre">Livre</option>
                 </select>
               </div>
