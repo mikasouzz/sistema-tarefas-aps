@@ -1,14 +1,31 @@
 import { db } from '../../db.js';
-import { setAppState } from '../../state.js';
+import { AppState } from '../../state.js';
 import { todayStr } from '../../utils/date.js';
 
-const BATCH = 50; // rows por upsert
+const BATCH = 50;   // rows por upsert
+const PAGE  = 1000; // limite máximo de uma request do PostgREST/Supabase
 
 async function upsertBatches(table, rows) {
   for (let i = 0; i < rows.length; i += BATCH) {
     const { error } = await db.from(table).upsert(rows.slice(i, i + BATCH), { onConflict: 'id' });
     if (error) throw new Error(`Erro ao importar ${table}: ${error.message}`);
   }
+}
+
+// Backup/export precisa da tabela inteira (diferente das outras views, que
+// escopam por data) — pagina em lotes de 1000 até esgotar, sem depender de
+// nenhum teto fixo.
+async function fetchAllRows(table, selectStr) {
+  const rows = [];
+  let offset = 0;
+  for (;;) {
+    const { data, error } = await db.from(table).select(selectStr).range(offset, offset + PAGE - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+    offset += PAGE;
+  }
+  return rows;
 }
 
 export const BackupCtrl = {
@@ -87,27 +104,22 @@ export const BackupCtrl = {
     btn.disabled = true;
 
     try {
-      const [mRes, tRes, nRes, aRes, rRes] = await Promise.all([
-        db.from('tb_aps_members').select('*').order('name'),
-        db.from('tb_aps_tasks').select('*').order('updated_at'),
-        db.from('tb_aps_notices').select('*').order('created_at'),
-        db.from('tb_aps_absences').select('*'),
-        db.from('tb_aps_task_requests').select('*').order('created_at'),
+      const [members, tasks, notices, absences, requests] = await Promise.all([
+        fetchAllRows('tb_aps_members', '*'),
+        fetchAllRows('tb_aps_tasks', '*'),
+        fetchAllRows('tb_aps_notices', '*'),
+        fetchAllRows('tb_aps_absences', '*'),
+        fetchAllRows('tb_aps_task_requests', '*'),
       ]);
-      if (mRes.error) throw new Error(mRes.error.message);
-      if (tRes.error) throw new Error(tRes.error.message);
-      if (nRes.error) throw new Error(nRes.error.message);
-      if (aRes.error) throw new Error(aRes.error.message);
-      if (rRes.error) throw new Error(rRes.error.message);
 
       const payload = {
         version:     1,
         exported_at: new Date().toISOString(),
-        members:     mRes.data || [],
-        tasks:       tRes.data || [],
-        notices:     nRes.data || [],
-        absences:    aRes.data || [],
-        requests:    rRes.data || [],
+        members,
+        tasks,
+        notices,
+        absences,
+        requests,
       };
 
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -287,21 +299,12 @@ export const BackupCtrl = {
       // 6. Solicitações — dependem de tasks
       if (requests.length) await upsertBatches('tb_aps_task_requests', requests);
 
-      // Recarrega AppState
-      const [mRes, tRes, nRes, aRes, rRes] = await Promise.all([
-        db.from('tb_aps_members').select('*').order('name'),
-        db.from('tb_aps_tasks').select('*, tb_aps_members(name, role)').not('member_id', 'is', null).order('scheduled_date'),
-        db.from('tb_aps_notices').select('*').order('created_at', { ascending: false }),
-        db.from('tb_aps_absences').select('*'),
-        db.from('tb_aps_task_requests').select('*').order('created_at'),
+      // Recarrega AppState (membros/avisos/ausências/solicitações inteiros;
+      // tarefas só a semana atualmente selecionada — cada view busca a sua ao navegar)
+      await Promise.all([
+        window.App.loadAuxData(),
+        window.App.loadWeekTasks(AppState.selectedWeekStart),
       ]);
-      setAppState({
-        members:  mRes.data || [],
-        tasks:    tRes.data || [],
-        notices:  nRes.data || [],
-        absences: aRes.data || [],
-        requests: rRes.data || [],
-      });
 
       this._pendingData = null;
       feedback.innerHTML = `

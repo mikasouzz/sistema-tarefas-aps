@@ -243,25 +243,29 @@ export const CalendarCtrl = {
     window.Toast.show('Tarefas concluídas!', 'success');
   },
 
-  shiftWeek(delta) {
+  async shiftWeek(delta) {
     const d = new Date(AppState.selectedWeekStart);
     d.setDate(d.getDate() + delta * 7);
     setAppState({ selectedWeekStart: d });
+    await window.App.loadWeekTasks(d);
     this._render();
   },
 
-  goToday() {
-    setAppState({ selectedWeekStart: getMondayOf(new Date()) });
+  async goToday() {
+    const mon = getMondayOf(new Date());
+    setAppState({ selectedWeekStart: mon });
+    await window.App.loadWeekTasks(mon);
     this._render();
   },
 
-  setWeek(val) {
+  async setWeek(val) {
     const [year, week] = val.split('-W').map(Number);
     const jan4 = new Date(year, 0, 4);
     const mon  = new Date(jan4);
     mon.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1 + (week - 1) * 7);
     mon.setHours(0, 0, 0, 0);
     setAppState({ selectedWeekStart: mon });
+    await window.App.loadWeekTasks(mon);
     this._render();
   },
 
@@ -793,11 +797,7 @@ export const CalendarCtrl = {
     const { error } = await db.from('tb_aps_tasks').insert(rows);
     if (error) { window.Toast.show('Erro ao salvar tarefa.', 'error'); return; }
 
-    const { data } = await db.from('tb_aps_tasks')
-      .select('*, tb_aps_members(name, role)')
-      .not('member_id', 'is', null)
-      .order('scheduled_date');
-    setAppState({ tasks: data || [] });
+    await window.App.loadWeekTasks(AppState.selectedWeekStart);
 
     this._render();
     this._renderModalList();

@@ -1,3 +1,4 @@
+import { db } from '../../db.js';
 import { AppState } from '../../state.js';
 import { getMondayOf, toDateStr, fmtShort } from '../../utils/date.js';
 
@@ -37,14 +38,45 @@ export const RankingCtrl = {
   _selectedMemberId: 'all',
   _rangeStart: null,
   _rangeEnd: null,
+  _rangeTasks: [],
+  _monthTasks: [],
 
-  init(container) {
+  async init(container) {
     this._container = container;
     const monday = getMondayOf(new Date());
     const friday = new Date(monday); friday.setDate(monday.getDate() + 4);
     this._rangeStart = toDateStr(monday);
     this._rangeEnd   = toDateStr(friday);
+    await Promise.all([this._loadRangeTasks(), this._loadMonthTasks()]);
     this._render();
+  },
+
+  // Esta view precisa de tarefas em duas janelas independentes: o período
+  // escolhido pelo usuário (De/Até) e o mês corrente (gráfico de evolução),
+  // então busca cada uma direto no banco em vez de depender de AppState.tasks
+  // (que é escopado por semana para as outras views).
+  async _loadRangeTasks() {
+    const { data, error } = await db.from('tb_aps_tasks')
+      .select('*, tb_aps_members(name, role)')
+      .not('member_id', 'is', null)
+      .gte('scheduled_date', this._rangeStart)
+      .lte('scheduled_date', this._rangeEnd);
+    if (error) window.Toast?.show('Erro ao carregar tarefas do período.', 'error');
+    this._rangeTasks = data || [];
+  },
+
+  async _loadMonthTasks() {
+    const weeks = this._monthWeeks(new Date());
+    if (weeks.length === 0) { this._monthTasks = []; return; }
+    const monthStart = weeks[0].start;
+    const monthEnd   = weeks[weeks.length - 1].end;
+    const { data, error } = await db.from('tb_aps_tasks')
+      .select('*, tb_aps_members(name, role)')
+      .not('member_id', 'is', null)
+      .gte('scheduled_date', monthStart)
+      .lte('scheduled_date', monthEnd);
+    if (error) window.Toast?.show('Erro ao carregar tarefas do mês.', 'error');
+    this._monthTasks = data || [];
   },
 
   onMemberChange(value) {
@@ -74,7 +106,7 @@ export const RankingCtrl = {
     return weeks;
   },
 
-  onRangeChange(field, value) {
+  async onRangeChange(field, value) {
     if (!value) return;
     if (field === 'start') this._rangeStart = value;
     if (field === 'end')   this._rangeEnd   = value;
@@ -82,18 +114,19 @@ export const RankingCtrl = {
       if (field === 'start') this._rangeEnd = value;
       else this._rangeStart = value;
     }
+    await this._loadRangeTasks();
     this._render();
   },
 
   _render() {
-    const { members, tasks } = AppState;
+    const { members } = AppState;
     const active = members.filter(m => m.active);
 
     const weekStart = this._rangeStart;
     const weekEnd    = this._rangeEnd;
     const weekLabel  = `${fmtShort(new Date(weekStart + 'T12:00:00'))} — ${fmtShort(new Date(weekEnd + 'T12:00:00'))}`;
 
-    const allWeekTasks = tasks.filter(t => t.scheduled_date >= weekStart && t.scheduled_date <= weekEnd);
+    const allWeekTasks = this._rangeTasks;
     let weekTasks = allWeekTasks;
     if (this._selectedMemberId !== 'all') {
       weekTasks = weekTasks.filter(t => t.member_id === this._selectedMemberId);
@@ -164,7 +197,7 @@ export const RankingCtrl = {
     const memberFilter = t => this._selectedMemberId === 'all' || t.member_id === this._selectedMemberId;
     const weeklyVolume = monthWeeks.map(w => ({
       ...w,
-      total: tasks.filter(t => memberFilter(t) && t.scheduled_date >= w.start && t.scheduled_date <= w.end).length,
+      total: this._monthTasks.filter(t => memberFilter(t) && t.scheduled_date >= w.start && t.scheduled_date <= w.end).length,
     }));
 
     this._container.innerHTML = `

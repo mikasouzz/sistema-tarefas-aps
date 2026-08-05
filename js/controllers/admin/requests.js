@@ -14,10 +14,24 @@ const STATUS_LABEL = {
 export const RequestsCtrl = {
   _container: null,
   _activeTab: 'removal',
+  _taskMeta: new Map(),
 
-  init(container) {
+  async init(container) {
     this._container = container;
+    await this._loadTaskMeta();
     this._render();
+  },
+
+  // Tarefas referenciadas por solicitações de remoção podem ter qualquer
+  // scheduled_date (passada ou futura), então não dá pra contar com
+  // AppState.tasks (escopado por semana para as outras views) — busca
+  // só as tarefas necessárias, por id.
+  async _loadTaskMeta() {
+    const ids = AppState.requests.map(r => r.task_id).filter(Boolean);
+    if (ids.length === 0) { this._taskMeta = new Map(); return; }
+    const { data, error } = await db.from('tb_aps_tasks').select('*').in('id', ids);
+    if (error) { window.Toast?.show('Erro ao carregar dados das tarefas.', 'error'); return; }
+    this._taskMeta = new Map((data || []).map(t => [t.id, t]));
   },
 
   _render() {
@@ -117,7 +131,7 @@ export const RequestsCtrl = {
     const sentAt = new Date(r.created_at).toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
     });
-    const task = AppState.tasks.find(t => t.id === r.task_id);
+    const task = this._taskMeta.get(r.task_id);
 
     const fmtDate = str => {
       if (!str) return '—';
@@ -212,10 +226,13 @@ export const RequestsCtrl = {
   async accept(requestId, taskId) {
     const { error } = await db.from('tb_aps_tasks').delete().eq('id', taskId);
     if (error) { window.Toast.show('Erro ao remover tarefa.', 'error'); return; }
+    // AppState.tasks é escopado por semana pra outras views (calendário etc.);
+    // só filtra aqui se a tarefa removida por acaso estiver na semana carregada.
     setAppState({
       tasks:    AppState.tasks.filter(t => t.id !== taskId),
       requests: AppState.requests.filter(r => r.id !== requestId),
     });
+    this._taskMeta.delete(taskId);
     window.Toast.show('Tarefa removida com sucesso.', 'success');
     this._render();
     window.App.refreshRequestsBadge();
@@ -253,9 +270,10 @@ export const RequestsCtrl = {
     const { error: updErr } = await db.from('tb_aps_task_insert_requests').update({ status: 'accepted' }).eq('id', requestId);
     if (updErr) { window.Toast.show('Erro ao atualizar solicitação.', 'error'); return; }
 
-    const member = AppState.members.find(m => m.id === r.member_id);
+    // Não empurra a nova tarefa em AppState.tasks: o array é escopado pela
+    // semana que a view atual está mostrando, e a data da tarefa criada pode
+    // cair fora dela — quem for exibi-la vai buscar sua própria semana.
     setAppState({
-      tasks:          [...AppState.tasks, { ...taskPayload, tb_aps_members: { name: r.member_name, role: member?.role } }],
       insertRequests: AppState.insertRequests.map(req => req.id === requestId ? { ...req, status: 'accepted' } : req),
     });
 

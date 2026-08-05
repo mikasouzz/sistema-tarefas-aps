@@ -36,8 +36,9 @@ export const AgendaCtrl = {
   _container: null,
   _weekStart: getMondayOf(new Date()),
 
-  init(container) {
+  async init(container) {
     this._container = container;
+    await window.App.loadWeekTasks(this._weekStart);
     this._render();
   },
 
@@ -159,25 +160,28 @@ export const AgendaCtrl = {
       </div>`;
   },
 
-  shiftWeek(delta) {
+  async shiftWeek(delta) {
     const d = new Date(this._weekStart);
     d.setDate(d.getDate() + delta * 7);
     this._weekStart = d;
+    await window.App.loadWeekTasks(d);
     this._render();
   },
 
-  goToday() {
+  async goToday() {
     this._weekStart = getMondayOf(new Date());
+    await window.App.loadWeekTasks(this._weekStart);
     this._render();
   },
 
-  setWeek(val) {
+  async setWeek(val) {
     const [year, week] = val.split('-W').map(Number);
     const jan4 = new Date(year, 0, 4);
     const mon  = new Date(jan4);
     mon.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1 + (week - 1) * 7);
     mon.setHours(0, 0, 0, 0);
     this._weekStart = mon;
+    await window.App.loadWeekTasks(mon);
     this._render();
   },
 
