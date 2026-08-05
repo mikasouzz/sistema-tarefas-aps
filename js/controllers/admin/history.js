@@ -4,6 +4,7 @@ import { todayStr } from '../../utils/date.js';
 
 const TYPE_LABEL  = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte' };
 const SHIFT_LABEL = { manha:'Manhã', tarde:'Tarde', dia_todo:'Dia todo', livre:'Livre' };
+const PAGE = 1000; // limite máximo de uma request do PostgREST/Supabase
 
 export const HistoryCtrl = {
   _container: null,
@@ -89,19 +90,30 @@ export const HistoryCtrl = {
     resultsEl.innerHTML = `<div class="flex items-center gap-2 text-slate-500 py-8 justify-center">
       <i class="fa-solid fa-spinner fa-spin"></i> Buscando…</div>`;
 
-    let q = db.from('tb_aps_tasks')
-      .select('*, member:tb_aps_members(name)')
-      .not('member_id', 'is', null)
-      .order('scheduled_date', { ascending: false });
+    // Uma busca sem filtro de data pode facilmente passar de 1000 linhas
+    // (o teto de uma request do PostgREST/Supabase), então pagina em loop
+    // até esgotar em vez de confiar num único fetch.
+    const rows = [];
+    let offset = 0;
+    for (;;) {
+      let q = db.from('tb_aps_tasks')
+        .select('*, member:tb_aps_members(name)')
+        .not('member_id', 'is', null)
+        .order('scheduled_date', { ascending: false })
+        .range(offset, offset + PAGE - 1);
 
-    if (start) q = q.gte('scheduled_date', start);
-    if (end)   q = q.lte('scheduled_date', end);
-    if (memberId) q = q.eq('member_id', memberId);
+      if (start) q = q.gte('scheduled_date', start);
+      if (end)   q = q.lte('scheduled_date', end);
+      if (memberId) q = q.eq('member_id', memberId);
 
-    const { data, error } = await q;
-    if (error) { window.Toast.show('Erro na busca.', 'error'); return; }
+      const { data, error } = await q;
+      if (error) { window.Toast.show('Erro na busca.', 'error'); return; }
+      rows.push(...(data || []));
+      if (!data || data.length < PAGE) break;
+      offset += PAGE;
+    }
 
-    let items = data || [];
+    let items = rows;
     if (keyword) items = items.filter(t => t.title.toLowerCase().includes(keyword));
     this._results = items;
     this._renderTable(items, resultsEl);

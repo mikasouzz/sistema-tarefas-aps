@@ -58,10 +58,15 @@ export const GameCtrl = {
       .sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  openModal() {
+  async openModal() {
     this._view = 'list';
     this._selectedMemberId = null;
     this._chosenGame = null;
+    // AppState.tasks está escopado à semana que a view atual estava mostrando
+    // (cronograma admin/livre podem estar em outra semana) — garante que a
+    // semana corrente está carregada antes de calcular elegibilidade.
+    const { start } = this._weekRange();
+    await window.App.loadWeekTasks(new Date(start + 'T12:00:00'));
     this._render();
   },
 

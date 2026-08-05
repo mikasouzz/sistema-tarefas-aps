@@ -1,5 +1,6 @@
 import { db } from './db.js';
 import { AppState, setAppState } from './state.js';
+import { toDateStr } from './utils/date.js';
 
 export const VERSION = 'v1.2';
 
@@ -18,13 +19,31 @@ export const App = {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
   },
 
-  async loadData() {
-    const [mRes, tRes, nRes, aRes, rRes, iRes, gRes, oRes] = await Promise.all([
+  // Busca tarefas alocadas (member_id NOT NULL) de uma semana específica
+  // (segunda a sexta), em vez da tabela inteira — a tabela já passou de
+  // 1000 linhas, que é o limite padrão de uma request do PostgREST/Supabase,
+  // e um fetch sem filtro de data trunca silenciosamente os registros mais
+  // recentes/futuros.
+  async loadWeekTasks(weekStart) {
+    const start = new Date(weekStart);
+    const end   = new Date(weekStart);
+    end.setDate(end.getDate() + 4);
+    const { data, error } = await db.from('tb_aps_tasks')
+      .select('*, tb_aps_members(name, role)')
+      .not('member_id', 'is', null)
+      .gte('scheduled_date', toDateStr(start))
+      .lte('scheduled_date', toDateStr(end))
+      .order('scheduled_date');
+    if (error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
+    setAppState({ tasks: data || [] });
+    return data || [];
+  },
+
+  // Tudo que não é tarefa (member_id/scheduled_date agnóstico) — pode ser
+  // recarregado independente de qual semana cada view está mostrando.
+  async loadAuxData() {
+    const [mRes, nRes, aRes, rRes, iRes, gRes, oRes] = await Promise.all([
       db.from('tb_aps_members').select('*').order('name'),
-      db.from('tb_aps_tasks')
-        .select('*, tb_aps_members(name, role)')
-        .not('member_id', 'is', null)
-        .order('scheduled_date'),
       db.from('tb_aps_notices').select('*').order('created_at', { ascending: false }),
       db.from('tb_aps_absences').select('*'),
       db.from('tb_aps_task_requests').select('*').order('created_at', { ascending: false }),
@@ -33,10 +52,8 @@ export const App = {
       db.from('tb_aps_one_on_ones').select('*').order('date'),
     ]);
     if (mRes.error) window.Toast?.show('Erro ao carregar membros.', 'error');
-    if (tRes.error) window.Toast?.show('Erro ao carregar tarefas.', 'error');
     setAppState({
       members:        mRes.data || [],
-      tasks:          tRes.data || [],
       notices:        nRes.data || [],
       absences:       aRes.data || [],
       requests:       rRes.data || [],
@@ -44,6 +61,13 @@ export const App = {
       gameScores:     gRes.data || [],
       oneOnOnes:      oRes.data || [],
     });
+  },
+
+  async loadData() {
+    await Promise.all([
+      this.loadAuxData(),
+      this.loadWeekTasks(AppState.selectedWeekStart),
+    ]);
   },
 
   navigate(view, tab, { updateHash = true } = {}) {

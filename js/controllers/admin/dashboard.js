@@ -1,3 +1,4 @@
+import { db } from '../../db.js';
 import { AppState } from '../../state.js';
 import { todayStr } from '../../utils/date.js';
 
@@ -22,9 +23,49 @@ function infoIcon(text) {
 
 export const AdminDashCtrl = {
   _container: null,
+  _loading: false,
 
-  init(container) {
+  async init(container) {
     this._container = container;
+    await this._load();
+    this._render();
+  },
+
+  // Este painel precisa de 3 recortes de tarefas que não cabem numa única
+  // janela de data (hoje / atrasadas sem limite inferior / eventos pendentes
+  // sem filtro de data nenhum), então busca cada um direto no banco em vez
+  // de depender de AppState.tasks (que é escopado por semana para as outras views).
+  async _load() {
+    const today = todayStr();
+    const [todayRes, overdueRes, mismatchRes] = await Promise.all([
+      db.from('tb_aps_tasks')
+        .select('*, tb_aps_members(name, role)')
+        .not('member_id', 'is', null)
+        .eq('scheduled_date', today),
+      db.from('tb_aps_tasks')
+        .select('*, tb_aps_members(name, role)')
+        .not('member_id', 'is', null)
+        .lt('scheduled_date', today)
+        .eq('status', 'pending'),
+      db.from('tb_aps_tasks')
+        .select('*, tb_aps_members(name, role)')
+        .not('member_id', 'is', null)
+        .in('type', ['reuniao', 'treinamento'])
+        .eq('status', 'pending'),
+    ]);
+    if (todayRes.error || overdueRes.error || mismatchRes.error) {
+      window.Toast?.show('Erro ao carregar visão geral.', 'error');
+    }
+    this._todayTasks    = todayRes.data || [];
+    this._overdueTasks  = overdueRes.data || [];
+    this._mismatchTasks = mismatchRes.data || [];
+  },
+
+  async refresh() {
+    if (this._loading) return;
+    this._loading = true;
+    await this._load();
+    this._loading = false;
     this._render();
   },
 
@@ -33,11 +74,11 @@ export const AdminDashCtrl = {
     const dayOfWeek  = new Date(today + 'T12:00:00').getDay();
     const isWeekday  = dayOfWeek >= 1 && dayOfWeek <= 5;
 
-    const { members, tasks, absences, requests } = AppState;
+    const { members, absences, requests } = AppState;
     const active = members.filter(m => m.active);
 
     // Progresso do dia
-    const todayTasks = tasks.filter(t => t.scheduled_date === today);
+    const todayTasks = this._todayTasks;
     const doneTasks  = todayTasks.filter(t => t.status === 'done');
     const progress   = todayTasks.length > 0 ? Math.round((doneTasks.length / todayTasks.length) * 100) : 0;
 
@@ -59,17 +100,15 @@ export const AdminDashCtrl = {
     const vacExpired = onVacation.filter(m => m.vacation_end && m.vacation_end < today);
 
     // Tarefas pendentes de dias anteriores
-    const overdue = tasks.filter(t => t.scheduled_date < today && t.status === 'pending');
     const overdueByMember = {};
-    overdue.forEach(t => {
+    this._overdueTasks.forEach(t => {
       if (!overdueByMember[t.member_id])
         overdueByMember[t.member_id] = { name: t.tb_aps_members?.name || '—', tasks: [] };
       overdueByMember[t.member_id].tasks.push(t);
     });
 
     // Reuniões/treinamentos com horário fora do turno informado
-    const timeMismatch = tasks.filter(t => {
-      if ((t.type !== 'reuniao' && t.type !== 'treinamento') || t.status === 'done') return false;
+    const timeMismatch = this._mismatchTasks.filter(t => {
       if (!t.event_time || (t.shift !== 'manha' && t.shift !== 'tarde')) return false;
       const isManha = t.event_time < '12:00';
       return (t.shift === 'manha' && !isManha) || (t.shift === 'tarde' && isManha);
@@ -94,7 +133,7 @@ export const AdminDashCtrl = {
             <h2 class="text-xl font-semibold text-white">Visão Geral</h2>
             <p class="text-slate-400 text-sm mt-1">${DAY_NAMES[dayOfWeek]}, ${fmtDate(today)}</p>
           </div>
-          <button onclick="AdminDashCtrl._render()"
+          <button onclick="AdminDashCtrl.refresh()"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white text-sm transition-colors">
             <i class="fa-solid fa-rotate-right text-xs"></i> Atualizar
           </button>
