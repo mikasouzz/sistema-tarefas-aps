@@ -1,5 +1,7 @@
+import { db } from '../../db.js';
 import { AppState } from '../../state.js';
 import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../utils/date.js';
+import { TYPE_OPTS, EVENT_COLOR_OPTS } from './calendar.js';
 
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
 const TYPE_LABEL = { treinamento: 'Treinamento', reuniao: 'Reunião' };
@@ -87,6 +89,11 @@ export const AgendaCtrl = {
               class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm transition-colors">
               Hoje
             </button>
+            ${AppState.view === 'admin' ? `
+              <button onclick="AgendaCtrl.openCreateEventModal()"
+                class="flex items-center gap-2 bg-primary hover:bg-violet-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                <i class="fa-solid fa-plus"></i> Novo evento
+              </button>` : ''}
             ${AppState.view === 'free' ? `
               <button onclick="AgendaCtrl.openOneOnOneModal()"
                 class="flex items-center gap-2 bg-primary hover:bg-violet-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
@@ -237,6 +244,184 @@ export const AgendaCtrl = {
 
   _backdropClickOneOnOne(e) {
     if (e.target === e.currentTarget) this.closeOneOnOneModal();
+  },
+
+  // ── Criar evento ──────────────────────────────────────────────────────────
+
+  openCreateEventModal() {
+    const activeMembers = AppState.members.filter(m => m.active);
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="AgendaCtrl._backdropClickCreateEvent(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between p-5 border-b border-slate-700 shrink-0">
+            <h3 class="font-bold text-white">Novo evento</h3>
+            <button onclick="AgendaCtrl.closeCreateEventModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="overflow-y-auto flex-1 p-5">
+            <form onsubmit="AgendaCtrl.createEvent(event)" class="flex flex-col gap-3">
+              <input id="ag-title" type="text" required placeholder="Título do evento"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
+                       text-sm focus:outline-none focus:border-primary transition-colors">
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Data</label>
+                <input id="ag-date" type="date" required value="${todayStr()}"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                         focus:outline-none focus:border-primary transition-colors">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Prioridade</label>
+                  <select id="ag-priority"
+                    class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm
+                           focus:outline-none focus:border-primary transition-colors">
+                    <option value="principal">Principal</option>
+                    <option value="secundaria">Secundária</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Turno</label>
+                  <select id="ag-shift"
+                    class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm
+                           focus:outline-none focus:border-primary transition-colors">
+                    <option value="manha">Manhã</option>
+                    <option value="tarde">Tarde</option>
+                    <option value="dia_todo">Dia todo</option>
+                    <option value="livre">Livre</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Tipo de demanda</label>
+                <select id="ag-type" onchange="AgendaCtrl._onCreateEventTypeChange()"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                         focus:outline-none focus:border-primary transition-colors">
+                  ${TYPE_OPTS.filter(o => o.v === 'treinamento' || o.v === 'reuniao').map(o => `<option value="${o.v}" ${o.v === 'treinamento' ? 'selected' : ''}>${o.l}</option>`).join('')}
+                </select>
+              </div>
+
+              <div id="ag-time-wrap">
+                <label class="block text-xs text-slate-400 mb-1">Horário <span class="text-danger">*</span></label>
+                <input id="ag-time" type="time" required
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                         focus:outline-none focus:border-primary transition-colors">
+              </div>
+
+              <div id="ag-color-wrap">
+                <label class="block text-xs text-slate-400 mb-1">Cor na agenda</label>
+                <select id="ag-color"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                         focus:outline-none focus:border-primary transition-colors">
+                  ${EVENT_COLOR_OPTS.map(o => `<option value="${o.v}">${o.l}</option>`).join('')}
+                </select>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="text-xs text-slate-400">Participantes <span class="text-danger">*</span></label>
+                  <div class="flex gap-2">
+                    <button type="button" onclick="AgendaCtrl._toggleAllCreateEventMembers(true)"
+                      class="text-[10px] text-primary hover:text-violet-300 transition-colors">Selecionar todos</button>
+                    <span class="text-slate-600 text-[10px]">|</span>
+                    <button type="button" onclick="AgendaCtrl._toggleAllCreateEventMembers(false)"
+                      class="text-[10px] text-slate-400 hover:text-slate-200 transition-colors">Desmarcar todos</button>
+                  </div>
+                </div>
+                <div id="ag-members-wrap" class="flex flex-col gap-0.5 max-h-36 overflow-y-auto bg-slate-700/50 border border-slate-600 rounded-lg p-1.5">
+                  ${activeMembers.length === 0
+                    ? `<p class="text-slate-500 text-xs text-center py-2">Nenhum membro ativo.</p>`
+                    : activeMembers.map(m => `
+                        <label class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-600/50 cursor-pointer select-none">
+                          <input type="checkbox" value="${m.id}" class="accent-primary shrink-0">
+                          <span class="text-sm text-slate-300 truncate">${m.name}</span>
+                        </label>`).join('')}
+                </div>
+              </div>
+
+              <button type="submit"
+                class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1">
+                <i class="fa-solid fa-plus mr-1.5"></i>Criar evento
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>`;
+    setTimeout(() => document.getElementById('ag-title')?.focus(), 50);
+  },
+
+  _onCreateEventTypeChange() {
+    const type  = document.getElementById('ag-type')?.value;
+    const needs = type === 'treinamento' || type === 'reuniao';
+    document.getElementById('ag-time-wrap')?.classList.toggle('hidden', !needs);
+    document.getElementById('ag-color-wrap')?.classList.toggle('hidden', !needs);
+    const time = document.getElementById('ag-time');
+    if (time) time.required = needs;
+  },
+
+  _toggleAllCreateEventMembers(select) {
+    document.querySelectorAll('#ag-members-wrap input[type="checkbox"]').forEach(cb => {
+      cb.checked = select;
+    });
+  },
+
+  async createEvent(e) {
+    e.preventDefault();
+    const title    = document.getElementById('ag-title').value.trim();
+    const date     = document.getElementById('ag-date').value;
+    const priority = document.getElementById('ag-priority').value;
+    const shift    = document.getElementById('ag-shift').value;
+    const type     = document.getElementById('ag-type').value;
+    const needsTime = type === 'treinamento' || type === 'reuniao';
+    const time  = needsTime ? document.getElementById('ag-time').value : null;
+    const color = needsTime ? document.getElementById('ag-color').value : null;
+    const memberIds = Array.from(document.querySelectorAll('#ag-members-wrap input[type="checkbox"]:checked')).map(cb => cb.value);
+
+    if (needsTime && !time) {
+      window.Toast.show('Informe o horário para esse tipo de demanda.', 'warning'); return;
+    }
+    if (memberIds.length === 0) {
+      window.Toast.show('Selecione ao menos um participante.', 'warning'); return;
+    }
+
+    const groupId = memberIds.length > 1 ? window.App.generateId() : null;
+    const rows = memberIds.map(mid => ({
+      id:             window.App.generateId(),
+      title,
+      member_id:      mid,
+      scheduled_date: date,
+      priority,
+      shift,
+      type,
+      event_time:     time || null,
+      event_color:    color || null,
+      demand_id:      null,
+      group_id:       groupId,
+      status:         'pending',
+    }));
+
+    const { error } = await db.from('tb_aps_tasks').insert(rows);
+    if (error) { window.Toast.show('Erro ao criar evento.', 'error'); return; }
+
+    this._weekStart = getMondayOf(new Date(date + 'T12:00:00'));
+    await window.App.loadWeekTasks(this._weekStart);
+    this.closeCreateEventModal();
+    this._render();
+    window.Toast.show(rows.length > 1 ? `Evento criado para ${rows.length} membros.` : 'Evento criado.', 'success');
+  },
+
+  closeCreateEventModal() {
+    document.getElementById('modal-container').innerHTML = '';
+  },
+
+  _backdropClickCreateEvent(e) {
+    if (e.target === e.currentTarget) this.closeCreateEventModal();
   },
 };
 window.AgendaCtrl = AgendaCtrl;

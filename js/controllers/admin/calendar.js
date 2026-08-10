@@ -3,7 +3,7 @@ import { AppState, setAppState } from '../../state.js';
 import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../utils/date.js';
 
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
-const TYPE_OPTS  = [
+export const TYPE_OPTS  = [
   { v:'operacional',  l:'Operacional' },
   { v:'analitica',    l:'Analítica' },
   { v:'estrategia',   l:'Estratégia' },
@@ -19,7 +19,7 @@ const TYPE_DOT = {
   reuniao:     'bg-rose-500',
   suporte:     'bg-cyan-500',
 };
-const EVENT_COLOR_OPTS = [
+export const EVENT_COLOR_OPTS = [
   { v: 'rosa',    l: 'Rosa',    dot: 'bg-pink-500' },
   { v: 'azul',    l: 'Azul',    dot: 'bg-blue-500' },
   { v: 'amarelo', l: 'Amarelo', dot: 'bg-amber-400' },
