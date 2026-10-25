@@ -387,12 +387,11 @@ export const TodayCtrl = {
 
   _card(t) {
     const done      = t.status === 'done';
-    const req       = AppState.requests?.find(r => r.task_id === t.id);
     const typeClass = TYPE_CLASS[t.type] || 'bg-slate-700 text-slate-300 border-slate-600';
     const hasTime   = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
     return `
       <div class="bg-slate-700/50 border border-slate-600 rounded-lg p-3 flex flex-col gap-2
-                  ${done || req ? 'opacity-50' : ''} ${t.priority === 'principal' ? 'border-l-2 border-l-violet-500' : ''}">
+                  ${done ? 'opacity-50' : ''} ${t.priority === 'principal' ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-start justify-between gap-2">
           <h3 class="font-medium text-sm leading-tight ${done ? 'line-through text-slate-400' : 'text-white'}">${t.title}</h3>
           ${done ? '<i class="fa-solid fa-circle-check text-accent shrink-0"></i>' : ''}
@@ -408,10 +407,6 @@ export const TodayCtrl = {
               class="text-warning hover:text-amber-300 transition-colors" title="Ver horário">
               <i class="fa-solid fa-star text-sm"></i>
             </button>` : ''}
-          ${!done && req ? `
-            <span class="text-xs text-rose-400 flex items-center gap-1">
-              <i class="fa-solid fa-circle-xmark text-[10px]"></i> Aguardando supervisão
-            </span>` : ''}
         </div>
       </div>`;
   },

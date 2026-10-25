@@ -302,19 +302,17 @@ export const ScheduleCtrl = {
 
   _miniCard(t) {
     const done        = t.status === 'done';
-    const req         = AppState.requests?.find(r => r.task_id === t.id);
     const hasTime     = (t.type === 'treinamento' || t.type === 'reuniao') && t.event_time;
     const isPrincipal = t.priority === 'principal';
     return `
       <div class="group relative bg-slate-700/60 border border-slate-600 rounded-lg p-2 text-xs
-                  ${done || req ? 'opacity-50' : ''} ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}">
+                  ${done ? 'opacity-50' : ''} ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-start justify-between gap-1">
           <span class="text-slate-200 leading-tight ${done ? 'line-through text-slate-500' : ''}">${t.title}</span>
           <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
             ${!done ? `
-              <button onclick="${req ? '' : `ScheduleCtrl.handleRequest('${t.id}')`}"
-                ${req ? `disabled title="Aguardando supervisão"` : `title="Solicitar remoção"`}
-                class="text-sm transition-colors ${req ? 'text-rose-500/40 cursor-default' : 'text-rose-500/70 hover:text-rose-400'}">
+              <button onclick="ScheduleCtrl.handleRequest('${t.id}')" title="Remover tarefa"
+                class="text-sm transition-colors text-rose-500/70 hover:text-rose-400">
                 <i class="fa-solid fa-circle-xmark"></i>
               </button>` : ''}
             <button onclick="ScheduleCtrl.toggleStatus('${t.id}','${t.status}')" title="${done ? 'Reabrir' : 'Concluir'}"
@@ -365,10 +363,6 @@ export const ScheduleCtrl = {
   },
 
   handleRequest(taskId) {
-    if (AppState.requests?.find(r => r.task_id === taskId)) {
-      window.Toast.show('Já existe uma solicitação pendente para esta tarefa.', 'info', 4000);
-      return;
-    }
     const task = AppState.tasks.find(t => t.id === taskId);
     if (task) this._openRequestModal(task);
   },
@@ -381,7 +375,7 @@ export const ScheduleCtrl = {
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl"
              onclick="event.stopPropagation()">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-white">Solicitar remoção</h3>
+            <h3 class="text-lg font-bold text-white">Remover tarefa</h3>
             <button onclick="ScheduleCtrl._closeReqModal()"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
               <i class="fa-solid fa-xmark"></i>
@@ -408,7 +402,7 @@ export const ScheduleCtrl = {
               </button>
               <button type="submit"
                 class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
-                Enviar solicitação
+                Remover tarefa
               </button>
             </div>
           </form>
@@ -430,7 +424,11 @@ export const ScheduleCtrl = {
     });
     if (error) { window.Toast.show('Erro ao enviar solicitação.', 'error'); return; }
 
+    const { error: delErr } = await db.from('tb_aps_tasks').delete().eq('id', taskId);
+    if (delErr) { window.Toast.show('Erro ao remover tarefa.', 'error'); return; }
+
     setAppState({
+      tasks: AppState.tasks.filter(t => t.id !== taskId),
       requests: [...AppState.requests, {
         id, task_id: taskId, task_title: taskTitle,
         member_name: memberName, justification,
@@ -439,7 +437,7 @@ export const ScheduleCtrl = {
     });
     this._closeReqModal();
     this._render();
-    window.Toast.show('Solicitação enviada para a supervisão.', 'success');
+    window.Toast.show('Tarefa removida.', 'info');
   },
 
   selectMember(id) {
@@ -510,7 +508,7 @@ export const ScheduleCtrl = {
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]"
              onclick="event.stopPropagation()">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-white">Solicitar nova tarefa</h3>
+            <h3 class="text-lg font-bold text-white">Nova tarefa</h3>
             <button onclick="ScheduleCtrl._closeInsertModal()"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
               <i class="fa-solid fa-xmark"></i>
@@ -607,7 +605,7 @@ export const ScheduleCtrl = {
               </button>
               <button type="submit"
                 class="flex-1 bg-primary hover:bg-primary/90 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
-                Enviar solicitação
+                Adicionar tarefa
               </button>
             </div>
           </form>
@@ -648,24 +646,40 @@ export const ScheduleCtrl = {
     const event_color  = showTime ? (document.getElementById('ins-color').value || null) : null;
     const justification = document.getElementById('ins-justification').value.trim() || null;
     const id           = window.App.generateId();
+    const taskId       = window.App.generateId();
+
+    const taskPayload = {
+      id: taskId, member_id: memberId, title, type, shift, priority,
+      scheduled_date, event_time, event_color, status: 'pending',
+    };
+    const { error: taskErr } = await db.from('tb_aps_tasks').insert(taskPayload);
+    if (taskErr) { window.Toast.show('Erro ao criar tarefa.', 'error'); return; }
 
     const { error } = await db.from('tb_aps_task_insert_requests').insert({
       id, member_id: memberId, member_name: memberName,
       title, type, shift, priority, scheduled_date, event_time, event_color, justification,
+      status: 'accepted',
     });
+    if (error) { window.Toast.show('Erro ao registrar notificação.', 'error'); }
 
-    if (error) { window.Toast.show('Erro ao enviar solicitação.', 'error'); return; }
+    const weekStart = toDateStr(getWeekDays(this._weekStart)[0]);
+    const weekEnd    = toDateStr(getWeekDays(this._weekStart)[4]);
+    const inCurrentWeek = scheduled_date && scheduled_date >= weekStart && scheduled_date <= weekEnd;
 
     setAppState({
+      tasks: inCurrentWeek
+        ? [...AppState.tasks, { ...taskPayload, tb_aps_members: { name: memberName } }]
+        : AppState.tasks,
       insertRequests: [...AppState.insertRequests, {
         id, member_id: memberId, member_name: memberName,
         title, type, shift, priority, scheduled_date, event_time, event_color, justification,
-        created_at: new Date().toISOString(),
+        status: 'accepted', created_at: new Date().toISOString(),
       }],
     });
 
     this._closeInsertModal();
-    window.Toast.show('Solicitação enviada para a supervisão.', 'success');
+    this._render();
+    window.Toast.show('Tarefa adicionada.', 'success');
   },
 };
 window.ScheduleCtrl = ScheduleCtrl;

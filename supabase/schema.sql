@@ -46,6 +46,11 @@ create table if not exists tb_aps_tasks (
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_start TEXT;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS vacation_end TEXT;
 -- ALTER TABLE tb_aps_members ADD COLUMN IF NOT EXISTS one_on_one_plan TEXT;
+-- GRANT insert, delete ON public.tb_aps_tasks TO anon;
+-- CREATE POLICY "anon insert tb_aps_tasks" ON tb_aps_tasks FOR INSERT WITH CHECK (true);
+-- CREATE POLICY "anon delete tb_aps_tasks" ON tb_aps_tasks FOR DELETE USING (true);
+-- ALTER TABLE tb_aps_task_requests DROP CONSTRAINT IF EXISTS tb_aps_task_requests_task_id_fkey;
+-- ALTER TABLE tb_aps_task_requests DROP CONSTRAINT IF EXISTS tb_aps_task_requests_task_id_key;
 
 -- TB_APS_ABSENCES
 create table if not exists tb_aps_absences (
@@ -62,7 +67,7 @@ create policy "admin manage tb_aps_absences" on tb_aps_absences for all    using
 -- TB_APS_TASK_REQUESTS
 create table if not exists tb_aps_task_requests (
   id            text primary key,
-  task_id       text unique references tb_aps_tasks(id) on delete cascade,
+  task_id       text,
   task_title    text not null,
   member_name   text not null,
   justification text not null,
@@ -171,7 +176,7 @@ grant select on public.tb_aps_one_on_ones to anon;
 grant all    on public.tb_aps_one_on_ones to authenticated;
 
 grant select          on public.tb_aps_members       to anon;
-grant select, update  on public.tb_aps_tasks          to anon;
+grant select, insert, update, delete on public.tb_aps_tasks to anon;
 grant select          on public.tb_aps_absences        to anon;
 grant select, insert  on public.tb_aps_task_requests   to anon;
 
@@ -188,7 +193,9 @@ alter table tb_aps_tasks enable row level security;
 create policy "anon read tb_aps_members"    on tb_aps_members for select using (true);
 create policy "admin manage tb_aps_members" on tb_aps_members for all    using (auth.role() = 'authenticated');
 
--- tb_aps_tasks: anon lê + atualiza status, autenticado faz tudo
+-- tb_aps_tasks: anon lê + cria/atualiza/remove (inserção/remoção pelo acesso público), autenticado faz tudo
 create policy "anon read tb_aps_tasks"      on tb_aps_tasks for select using (true);
+create policy "anon insert tb_aps_tasks"    on tb_aps_tasks for insert with check (true);
 create policy "anon update task status"     on tb_aps_tasks for update using (true);
+create policy "anon delete tb_aps_tasks"    on tb_aps_tasks for delete using (true);
 create policy "admin manage tb_aps_tasks"   on tb_aps_tasks for all    using (auth.role() = 'authenticated');

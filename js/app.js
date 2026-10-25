@@ -9,11 +9,6 @@ const FREE_TAB    = Object.fromEntries(Object.entries(FREE_ROUTE).map(([k, v]) =
 const ADMIN_ROUTE = { dashboard: 'visao-geral', calendar: 'cronograma', team: 'equipe', history: 'historico', bank: 'banco', notices: 'avisos', requests: 'solicitacoes', agenda: 'agenda', oneOnOne: 'one-a-one', backup: 'backup' };
 const ADMIN_TAB   = Object.fromEntries(Object.entries(ADMIN_ROUTE).map(([k, v]) => [v, k]));
 
-function pendingRequestsCount() {
-  const pendingInserts = AppState.insertRequests.filter(r => (r.status || 'pending') === 'pending').length;
-  return AppState.requests.length + pendingInserts;
-}
-
 export const App = {
   generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -205,10 +200,7 @@ export const App = {
             ${btn('bank',     'fa-database',          'Banco & Estudos')}
             ${btn('team',     'fa-users',             'Equipe')}
             ${btn('notices',  'fa-bell',              'Avisos')}
-            <div id="requests-badge-wrap" class="relative">
-              ${btn('requests', 'fa-inbox', 'Solicitações')}
-              ${pendingRequestsCount() > 0 ? `<span id="requests-badge" class="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1">${pendingRequestsCount()}</span>` : ''}
-            </div>
+            ${btn('requests', 'fa-inbox', 'Notificações')}
             ${btn('history',  'fa-clock-rotate-left', 'Histórico')}
             ${btn('backup',   'fa-box-archive',       'Backup')}
           </nav>
@@ -225,25 +217,6 @@ export const App = {
         <!-- Conteúdo -->
         <main id="content" class="flex-1 p-6 overflow-hidden flex flex-col"></main>
       </div>`;
-  },
-
-  refreshRequestsBadge() {
-    const wrap = document.getElementById('requests-badge-wrap');
-    if (!wrap) return;
-    const count   = pendingRequestsCount();
-    const cls     = 'absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full pointer-events-none px-1';
-    let badge     = document.getElementById('requests-badge');
-    if (count > 0) {
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.id = 'requests-badge';
-        badge.className = cls;
-        wrap.appendChild(badge);
-      }
-      badge.textContent = count;
-    } else {
-      badge?.remove();
-    }
   },
 
   async init() {

@@ -338,14 +338,12 @@ export const CalendarCtrl = {
                    text-accent rounded-lg py-2 text-sm font-medium transition-colors">
             <i class="fa-solid fa-check-double text-xs"></i>Concluir todas
           </button>` : ''}` + existing.map(t => {
-              const taskReq = AppState.requests?.find(r => r.task_id === t.id);
               return `
-              <div class="flex items-center gap-2 bg-slate-700/60 border ${taskReq ? 'border-rose-700/50' : 'border-slate-600'} rounded-lg px-3 py-2.5 ${taskReq ? 'opacity-60' : ''}">
+              <div class="flex items-center gap-2 bg-slate-700/60 border border-slate-600 rounded-lg px-3 py-2.5">
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-1.5 flex-wrap">
                     ${t.demand_id ? '<i class="fa-solid fa-link text-slate-500 text-xs"></i>' : ''}
                     <p class="text-sm text-white truncate ${t.status === 'done' ? 'line-through opacity-50' : ''}">${t.title}</p>
-                    ${taskReq ? '<span class="text-xs text-rose-400 flex items-center gap-1"><i class="fa-solid fa-circle-xmark text-[10px]"></i>Remoção solicitada</span>' : ''}
                   </div>
                   <p class="text-xs text-slate-400 mt-0.5">${TYPE_LABEL[t.type] || ''} · ${t.priority === 'principal' ? 'Principal' : 'Secundária'}</p>
                 </div>
