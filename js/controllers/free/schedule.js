@@ -414,6 +414,10 @@ export const ScheduleCtrl = {
         <div class="flex items-start justify-between gap-1">
           <span class="text-slate-200 leading-tight ${done ? 'line-through text-slate-500' : ''}">${t.type === 'viagem' ? TRAVEL_ICON : ''}${t.title}</span>
           <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <button onclick="ScheduleCtrl.openCopyModal('${t.id}')" title="Copiar para outro dia"
+              class="text-xs transition-colors text-slate-500 hover:text-white">
+              <i class="fa-solid fa-copy"></i>
+            </button>
             ${!done ? `
               <button onclick="ScheduleCtrl.handleRequest('${t.id}')" title="Remover tarefa"
                 class="text-sm transition-colors text-rose-500/70 hover:text-rose-400">
@@ -542,6 +546,113 @@ export const ScheduleCtrl = {
     this._closeReqModal();
     this._render();
     window.Toast.show('Tarefa removida.', 'info');
+  },
+
+  openCopyModal(taskId) {
+    const task = AppState.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const memberName = AppState.members.find(m => m.id === task.member_id)?.name || '—';
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="ScheduleCtrl._copyBackdrop(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-white">Copiar tarefa</h3>
+            <button onclick="ScheduleCtrl._closeCopyModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 mb-4">
+            <p class="text-sm text-white font-medium">${task.type === 'viagem' ? TRAVEL_ICON : ''}${task.title}</p>
+            <p class="text-xs text-slate-400 mt-0.5">${memberName}${TYPE_LABEL[task.type] ? ` · ${TYPE_LABEL[task.type]}` : ''}</p>
+          </div>
+          <form onsubmit="ScheduleCtrl._submitCopy(event,'${task.id}')">
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label class="block text-sm text-slate-400 mb-1.5">Copiar para o dia <span class="text-rose-400">*</span></label>
+                <input id="copy-date" type="date" required value="${task.scheduled_date || ''}"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors text-sm">
+              </div>
+              <div>
+                <label class="block text-sm text-slate-400 mb-1.5">Turno</label>
+                <select id="copy-shift"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
+                         focus:outline-none focus:border-primary transition-colors text-sm">
+                  <option value="manha" ${task.shift === 'manha' ? 'selected' : ''}>Manhã</option>
+                  <option value="tarde" ${task.shift === 'tarde' ? 'selected' : ''}>Tarde</option>
+                  <option value="dia_todo" ${task.shift === 'dia_todo' ? 'selected' : ''}>Dia todo</option>
+                  <option value="livre" ${task.shift === 'livre' ? 'selected' : ''}>Livre</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <button type="button" onclick="ScheduleCtrl._closeCopyModal()"
+                class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                Cancelar
+              </button>
+              <button type="submit"
+                class="flex-1 bg-primary hover:bg-primary/90 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                Copiar tarefa
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+    setTimeout(() => document.getElementById('copy-date')?.focus(), 50);
+  },
+
+  _closeCopyModal() { document.getElementById('modal-container').innerHTML = ''; },
+  _copyBackdrop(e)  { if (e.target === e.currentTarget) this._closeCopyModal(); },
+
+  async _submitCopy(e, taskId) {
+    e.preventDefault();
+    const task = AppState.tasks.find(t => t.id === taskId);
+    const scheduled_date = document.getElementById('copy-date').value;
+    const shift          = document.getElementById('copy-shift').value;
+    if (!task || !scheduled_date) return;
+
+    const memberName = AppState.members.find(m => m.id === task.member_id)?.name || '—';
+    const { title, type, priority, event_time, event_color } = task;
+    const [oy, om, od] = task.scheduled_date.split('-');
+    const justification = `Cópia da tarefa de ${od}/${om}/${oy}`;
+    const id        = window.App.generateId();
+    const newTaskId = window.App.generateId();
+
+    const taskPayload = {
+      id: newTaskId, member_id: task.member_id, title, type, shift, priority,
+      scheduled_date, event_time: event_time || null, event_color: event_color || null,
+      demand_id: task.demand_id || null, status: 'pending',
+    };
+    const { error: taskErr } = await db.from('tb_aps_tasks').insert(taskPayload);
+    if (taskErr) { window.Toast.show('Erro ao copiar tarefa.', 'error'); return; }
+
+    const notice = {
+      id, member_id: task.member_id, member_name: memberName,
+      title, type, shift, priority, scheduled_date,
+      event_time: taskPayload.event_time, event_color: taskPayload.event_color, justification,
+      status: 'accepted',
+    };
+    const { error } = await db.from('tb_aps_task_insert_requests').insert(notice);
+    if (error) { window.Toast.show('Erro ao registrar notificação.', 'error'); }
+
+    const weekStart = toDateStr(getWeekDays(this._weekStart)[0]);
+    const weekEnd   = toDateStr(getWeekDays(this._weekStart)[4]);
+    const inCurrentWeek = scheduled_date >= weekStart && scheduled_date <= weekEnd;
+
+    setAppState({
+      tasks: inCurrentWeek
+        ? [...AppState.tasks, { ...taskPayload, tb_aps_members: { name: memberName } }]
+        : AppState.tasks,
+      insertRequests: [...AppState.insertRequests, { ...notice, created_at: new Date().toISOString() }],
+    });
+
+    this._closeCopyModal();
+    this._render();
+    const [y, m, d] = scheduled_date.split('-');
+    window.Toast.show(`Tarefa copiada para ${d}/${m}/${y}.`, 'success');
   },
 
   selectMember(id) {

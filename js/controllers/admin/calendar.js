@@ -355,6 +355,10 @@ export const CalendarCtrl = {
                     class="w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${t.status === 'done' ? 'text-accent hover:text-slate-400 hover:bg-slate-600' : 'text-slate-400 hover:text-accent hover:bg-slate-600'}">
                     <i class="fa-solid ${t.status === 'done' ? 'fa-circle-check' : 'fa-circle'} text-sm"></i>
                   </button>
+                  <button onclick="CalendarCtrl.openCopyForm('${t.id}')" title="Copiar para outro dia"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition-colors">
+                    <i class="fa-solid fa-copy text-xs"></i>
+                  </button>
                   <button onclick="CalendarCtrl.openEditForm('${t.id}')"
                     class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition-colors">
                     <i class="fa-solid fa-pen text-xs"></i>
@@ -449,6 +453,83 @@ export const CalendarCtrl = {
   backToList() {
     this._selectedDemandId = null;
     this._renderModalList();
+  },
+
+  openCopyForm(taskId) {
+    const task = AppState.tasks.find(t => t.id === taskId);
+    const body = document.getElementById('cal-modal-body');
+    if (!task || !body) return;
+
+    body.innerHTML = `
+      <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-700">
+        <button onclick="CalendarCtrl.backToList()"
+          class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+          <i class="fa-solid fa-arrow-left text-xs"></i>
+        </button>
+        <p class="text-sm font-semibold text-white">Copiar tarefa</p>
+      </div>
+      <div class="p-5">
+        <form onsubmit="CalendarCtrl.copyTask(event,'${task.id}')" class="flex flex-col gap-3">
+          <div class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2">
+            <p class="text-sm text-white font-medium">${task.type === 'viagem' ? TRAVEL_ICON : ''}${task.title}</p>
+            <p class="text-xs text-slate-400 mt-0.5">${TYPE_LABEL[task.type] || ''} · ${task.priority === 'principal' ? 'Principal' : 'Secundária'}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Copiar para o dia <span class="text-danger">*</span></label>
+              <input id="cal-copy-date" type="date" required value="${task.scheduled_date || ''}"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                       focus:outline-none focus:border-primary transition-colors">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Turno</label>
+              <select id="cal-copy-shift"
+                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white text-sm
+                       focus:outline-none focus:border-primary transition-colors">
+                <option value="manha" ${task.shift === 'manha' ? 'selected' : ''}>Manhã</option>
+                <option value="tarde" ${task.shift === 'tarde' ? 'selected' : ''}>Tarde</option>
+                <option value="dia_todo" ${task.shift === 'dia_todo' ? 'selected' : ''}>Dia todo</option>
+                <option value="livre" ${task.shift === 'livre' ? 'selected' : ''}>Livre</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit"
+            class="bg-primary hover:bg-violet-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors mt-1">
+            <i class="fa-solid fa-copy mr-1.5"></i>Copiar tarefa
+          </button>
+        </form>
+      </div>`;
+    setTimeout(() => document.getElementById('cal-copy-date')?.focus(), 50);
+  },
+
+  async copyTask(e, taskId) {
+    e.preventDefault();
+    const task = AppState.tasks.find(t => t.id === taskId);
+    const date  = document.getElementById('cal-copy-date').value;
+    const shift = document.getElementById('cal-copy-shift').value;
+    if (!task || !date) return;
+
+    const { error } = await db.from('tb_aps_tasks').insert({
+      id:             window.App.generateId(),
+      title:          task.title,
+      member_id:      task.member_id,
+      scheduled_date: date,
+      priority:       task.priority,
+      shift,
+      type:           task.type,
+      event_time:     task.event_time || null,
+      event_color:    task.event_color || null,
+      demand_id:      task.demand_id || null,
+      group_id:       null,
+      status:         'pending',
+    });
+    if (error) { window.Toast.show('Erro ao copiar tarefa.', 'error'); return; }
+
+    await window.App.loadWeekTasks(AppState.selectedWeekStart);
+    this._render();
+    this._renderModalList();
+    const [y, m, d] = date.split('-');
+    window.Toast.show(`Tarefa copiada para ${d}/${m}/${y}.`, 'success');
   },
 
   _renderModalForm(taskId, editGroup = false) {
