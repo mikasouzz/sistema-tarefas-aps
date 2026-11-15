@@ -11,7 +11,9 @@ const TYPE_LABEL = {
   treinamento: 'Treinamento',
   reuniao:     'Reunião',
   suporte:     'Suporte',
+  viagem:      'Viagem',
 };
+const TRAVEL_ICON = '<i class="fa-solid fa-plane text-sky-400 text-[0.85em] mr-1" title="Viagem"></i>';
 const TYPE_CLASS = {
   operacional: 'bg-blue-900/50 text-blue-300 border-blue-700',
   analitica:   'bg-violet-900/50 text-violet-300 border-violet-700',
@@ -19,6 +21,7 @@ const TYPE_CLASS = {
   treinamento: 'bg-emerald-900/50 text-emerald-300 border-emerald-700',
   reuniao:     'bg-rose-900/50 text-rose-300 border-rose-700',
   suporte:     'bg-cyan-900/50 text-cyan-300 border-cyan-700',
+  viagem:      'bg-indigo-900/50 text-indigo-300 border-indigo-700',
 };
 const SHIFT_HTML = {
   manha: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium text-xs bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
@@ -393,7 +396,7 @@ export const TodayCtrl = {
       <div class="bg-slate-700/50 border border-slate-600 rounded-lg p-3 flex flex-col gap-2
                   ${done ? 'opacity-50' : ''} ${t.priority === 'principal' ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-start justify-between gap-2">
-          <h3 class="font-medium text-sm leading-tight ${done ? 'line-through text-slate-400' : 'text-white'}">${t.title}</h3>
+          <h3 class="font-medium text-sm leading-tight ${done ? 'line-through text-slate-400' : 'text-white'}">${t.type === 'viagem' ? TRAVEL_ICON : ''}${t.title}</h3>
           ${done ? '<i class="fa-solid fa-circle-check text-accent shrink-0"></i>' : ''}
         </div>
         <div class="flex flex-wrap items-center gap-2">

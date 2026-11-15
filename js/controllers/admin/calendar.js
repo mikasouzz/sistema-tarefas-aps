@@ -10,6 +10,7 @@ export const TYPE_OPTS  = [
   { v:'treinamento',  l:'Treinamento' },
   { v:'reuniao',      l:'Reunião' },
   { v:'suporte',      l:'Suporte' },
+  { v:'viagem',       l:'Viagem' },
 ];
 const TYPE_DOT = {
   operacional: 'bg-blue-500',
@@ -18,7 +19,9 @@ const TYPE_DOT = {
   treinamento: 'bg-emerald-500',
   reuniao:     'bg-rose-500',
   suporte:     'bg-cyan-500',
+  viagem:      'bg-indigo-500',
 };
+const TRAVEL_ICON = '<i class="fa-solid fa-plane text-sky-400 text-[0.85em] mr-1" title="Viagem"></i>';
 export const EVENT_COLOR_OPTS = [
   { v: 'rosa',    l: 'Rosa',    dot: 'bg-pink-500' },
   { v: 'azul',    l: 'Azul',    dot: 'bg-blue-500' },
@@ -170,7 +173,7 @@ export const CalendarCtrl = {
                                   <i class="fa-solid ${t.status === 'done' ? 'fa-circle-check' : 'fa-circle'} text-[10px]"></i>
                                 </button>
                                 <span class="text-xs text-slate-300 truncate ${t.status === 'done' ? 'line-through' : ''}">
-                                  ${t.demand_id ? '<i class="fa-solid fa-link text-[8px] text-slate-500 mr-0.5"></i>' : ''}${t.title}
+                                  ${t.demand_id ? '<i class="fa-solid fa-link text-[8px] text-slate-500 mr-0.5"></i>' : ''}${t.type === 'viagem' ? TRAVEL_ICON : ''}${t.title}
                                 </span>
                               </div>`).join('');
                           }).join('')}
@@ -909,8 +912,8 @@ export const CalendarCtrl = {
     const DAY_LABEL = ['Seg','Ter','Qua','Qui','Sex'];
     const SHIFTS    = ['manha','tarde','livre'];
     const SHIFT_LABEL = { manha: 'Manhã', tarde: 'Tarde', livre: 'Livre' };
-    const TYPE_ABBR = { operacional:'Oper.', analitica:'Analít.', estrategia:'Estrat.', treinamento:'Treino', reuniao:'Reunião', suporte:'Suporte' };
-    const TYPE_CLS  = { operacional:'op', analitica:'an', estrategia:'es', treinamento:'tr', reuniao:'re', suporte:'su' };
+    const TYPE_ABBR = { operacional:'Oper.', analitica:'Analít.', estrategia:'Estrat.', treinamento:'Treino', reuniao:'Reunião', suporte:'Suporte', viagem:'Viagem' };
+    const TYPE_CLS  = { operacional:'op', analitica:'an', estrategia:'es', treinamento:'tr', reuniao:'re', suporte:'su', viagem:'vi' };
 
     const today = toDateStr(new Date());
 
@@ -977,6 +980,7 @@ td.member{font-weight:600;color:#1e293b;background:#f8fafc;width:90px;vertical-a
 .tr{background:#d1fae5;color:#065f46}
 .re{background:#fce7f3;color:#9d174d}
 .su{background:#cffafe;color:#0e7490}
+.vi{background:#e0e7ff;color:#4338ca}
 .empty{color:#cbd5e1;font-size:10px}
 footer{margin-top:10px;font-size:9px;color:#94a3b8}
 button{margin-bottom:14px;padding:6px 14px;background:#6d28d9;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px}

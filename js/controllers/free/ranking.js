@@ -9,8 +9,9 @@ const TYPE_LABEL = {
   treinamento: 'Treinamento',
   reuniao:     'Reunião',
   suporte:     'Suporte',
+  viagem:      'Viagem',
 };
-const TYPE_ORDER = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao', 'suporte'];
+const TYPE_ORDER = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao', 'suporte', 'viagem'];
 const TYPE_BAR = {
   operacional: 'bg-blue-500',
   analitica:   'bg-violet-500',
@@ -18,6 +19,7 @@ const TYPE_BAR = {
   treinamento: 'bg-emerald-500',
   reuniao:     'bg-rose-500',
   suporte:     'bg-cyan-500',
+  viagem:      'bg-indigo-500',
 };
 const TYPE_HEX = {
   operacional: '#3b82f6',
@@ -26,6 +28,7 @@ const TYPE_HEX = {
   treinamento: '#10b981',
   reuniao:     '#f43f5e',
   suporte:     '#06b6d4',
+  viagem:      '#6366f1',
 };
 const MEMBER_PALETTE = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e', '#06b6d4', '#ec4899', '#eab308'];
 

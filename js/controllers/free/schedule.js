@@ -3,7 +3,8 @@ import { AppState, setAppState } from '../../state.js';
 import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../utils/date.js';
 
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
-const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte' };
+const TYPE_LABEL = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte', viagem:'Viagem' };
+const TRAVEL_ICON = '<i class="fa-solid fa-plane text-sky-400 text-[0.85em] mr-1" title="Viagem"></i>';
 const SHIFT_BADGE = {
   manha: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-amber-400/20 text-amber-400"><i class="fa-solid fa-sun text-xs"></i>Manhã</span>',
   tarde: '<span class="inline-flex items-center gap-1 px-1 py-px rounded font-medium bg-orange-400/20 text-orange-400"><i class="fa-solid fa-cloud-sun text-xs"></i>Tarde</span>',
@@ -308,7 +309,7 @@ export const ScheduleCtrl = {
       <div class="group relative bg-slate-700/60 border border-slate-600 rounded-lg p-2 text-xs
                   ${done ? 'opacity-50' : ''} ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}">
         <div class="flex items-start justify-between gap-1">
-          <span class="text-slate-200 leading-tight ${done ? 'line-through text-slate-500' : ''}">${t.title}</span>
+          <span class="text-slate-200 leading-tight ${done ? 'line-through text-slate-500' : ''}">${t.type === 'viagem' ? TRAVEL_ICON : ''}${t.title}</span>
           <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
             ${!done ? `
               <button onclick="ScheduleCtrl.handleRequest('${t.id}')" title="Remover tarefa"
@@ -544,6 +545,7 @@ export const ScheduleCtrl = {
                   <option value="treinamento">Treinamento</option>
                   <option value="reuniao">Reunião</option>
                   <option value="suporte">Suporte</option>
+                  <option value="viagem">Viagem</option>
                 </select>
               </div>
               <div>
