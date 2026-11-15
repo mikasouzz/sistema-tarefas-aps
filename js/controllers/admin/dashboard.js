@@ -1,5 +1,5 @@
 import { db } from '../../db.js';
-import { AppState } from '../../state.js';
+import { AppState, setAppState } from '../../state.js';
 import { todayStr } from '../../utils/date.js';
 
 function fmtDate(str) {
@@ -74,7 +74,7 @@ export const AdminDashCtrl = {
     const dayOfWeek  = new Date(today + 'T12:00:00').getDay();
     const isWeekday  = dayOfWeek >= 1 && dayOfWeek <= 5;
 
-    const { members, absences, requests } = AppState;
+    const { members, absences } = AppState;
     const active = members.filter(m => m.active);
 
     // Progresso do dia
@@ -144,7 +144,7 @@ export const AdminDashCtrl = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
               ${this._cardProgress(todayTasks, doneTasks, progress, isWeekday)}
               ${this._cardNoTasks(noTasksToday, isWeekday)}
-              ${this._cardRequests(requests)}
+              ${this._cardInsertions(AppState.insertRequests || [])}
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               ${this._cardAbsent(absentToday, active)}
@@ -205,20 +205,40 @@ export const AdminDashCtrl = {
     return this._card('fa-gauge', 'text-primary', 'Progresso do Dia', badge, content);
   },
 
-  _cardRequests(requests) {
-    const content = requests.length === 0
-      ? this._empty('Nenhuma solicitação pendente.')
-      : `<div class="flex items-center justify-between">
-           <div>
-             <p class="text-2xl font-bold text-white">${requests.length}</p>
-             <p class="text-slate-400 text-xs mt-0.5">solicitaç${requests.length !== 1 ? 'ões' : 'ão'} aguardando resposta</p>
-           </div>
-           <button onclick="App.navigate('admin','requests')"
-             class="text-xs px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors">
-             Ver solicitações
-           </button>
-         </div>`;
-    return this._card('fa-inbox', 'text-rose-400', 'Solicitações', null, content);
+  _cardInsertions(insertions) {
+    const today   = todayStr();
+    const sorted  = [...insertions].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const todayCt = sorted.filter(r => r.created_at && new Date(r.created_at).toLocaleDateString('sv-SE') === today).length;
+    const recent  = sorted.slice(0, 5);
+    const content = recent.length === 0
+      ? this._empty('Nenhuma inserção registrada.')
+      : `<div class="flex flex-col">
+           ${recent.map(r => {
+             const at = new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+             return `
+               <div class="flex items-center gap-2 py-1.5 border-b border-slate-700/50 last:border-0">
+                 <i class="fa-solid fa-plus text-[9px] text-primary shrink-0"></i>
+                 <div class="min-w-0 flex-1">
+                   <p class="text-xs text-slate-300 truncate">${r.title}</p>
+                   <p class="text-[10px] text-slate-500 truncate">${r.member_name}</p>
+                 </div>
+                 <span class="text-[10px] text-slate-500 shrink-0">${at}</span>
+               </div>`;
+           }).join('')}
+         </div>
+         <button onclick="AdminDashCtrl.openInsertions()"
+           class="text-xs px-3 py-1.5 rounded-lg bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary transition-colors self-end">
+           Ver todas
+         </button>`;
+    const badge = todayCt > 0
+      ? { cls: 'bg-primary/20 border border-primary/40 text-primary', label: `${todayCt} hoje` }
+      : null;
+    return this._card('fa-inbox', 'text-primary', 'Notificações de Entrada', badge, content);
+  },
+
+  openInsertions() {
+    if (window.RequestsCtrl) window.RequestsCtrl._activeTab = 'insertion';
+    window.App.navigate('admin', 'requests');
   },
 
   _cardAbsent(absentToday, active) {
@@ -289,9 +309,27 @@ export const AdminDashCtrl = {
   _cardOverdue(overdueByMember) {
     const entries = Object.values(overdueByMember);
     const total   = entries.reduce((s, e) => s + e.tasks.length, 0);
+    const action = this._confirmCompleteOverdue
+      ? `<div class="flex items-center gap-2 bg-slate-900 border border-accent/30 rounded-lg px-3 py-2">
+           <i class="fa-solid fa-check-double text-accent text-xs shrink-0"></i>
+           <span class="text-xs text-slate-300 flex-1">Concluir ${total} tarefa${total !== 1 ? 's' : ''} pendente${total !== 1 ? 's' : ''}?</span>
+           <button onclick="AdminDashCtrl.cancelCompleteOverdue()"
+             class="text-xs px-2.5 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+             Cancelar
+           </button>
+           <button onclick="AdminDashCtrl.completeAllOverdue()"
+             class="text-xs px-2.5 py-1 rounded-lg bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent font-medium transition-colors">
+             Confirmar
+           </button>
+         </div>`
+      : `<button onclick="AdminDashCtrl.askCompleteOverdue()"
+           class="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent rounded-lg transition-colors">
+           <i class="fa-solid fa-check-double text-[10px]"></i> Concluir todas
+         </button>`;
     const content = entries.length === 0
       ? this._empty('Nenhuma tarefa em atraso.')
-      : `<div class="flex flex-col gap-3">
+      : `${action}
+         <div class="flex flex-col gap-3">
            ${entries.map(e => `
              <div>
                <p class="text-xs font-semibold text-slate-400 mb-1">
@@ -309,6 +347,30 @@ export const AdminDashCtrl = {
       ? { cls: 'bg-rose-900/40 border border-rose-700 text-rose-300', label: total }
       : null;
     return this._card('fa-circle-exclamation', 'text-rose-400', 'Pendentes de Dias Anteriores', badge, content);
+  },
+
+  askCompleteOverdue() {
+    this._confirmCompleteOverdue = true;
+    this._render();
+  },
+
+  cancelCompleteOverdue() {
+    this._confirmCompleteOverdue = false;
+    this._render();
+  },
+
+  async completeAllOverdue() {
+    this._confirmCompleteOverdue = false;
+    const ids = this._overdueTasks.map(t => t.id);
+    if (ids.length === 0) { this._render(); return; }
+
+    const { error } = await db.from('tb_aps_tasks').update({ status: 'done' }).in('id', ids);
+    if (error) { window.Toast.show('Erro ao concluir tarefas.', 'error'); this._render(); return; }
+
+    setAppState({ tasks: AppState.tasks.map(t => ids.includes(t.id) ? { ...t, status: 'done' } : t) });
+    this._overdueTasks = [];
+    this._render();
+    window.Toast.show(`${ids.length} tarefa${ids.length !== 1 ? 's' : ''} concluída${ids.length !== 1 ? 's' : ''}.`, 'success');
   },
 
   _cardTimeMismatch(mismatches) {

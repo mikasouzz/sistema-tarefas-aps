@@ -34,9 +34,16 @@ export const RequestsCtrl = {
 
     this._container.innerHTML = `
       <div class="flex-1 flex flex-col min-h-0">
-        <div class="mb-5 shrink-0">
-          <h2 class="text-xl font-semibold text-white">Notificações</h2>
-          <p class="text-sm text-slate-400 mt-1">Inserções e remoções feitas pelo acesso público.</p>
+        <div class="flex items-center justify-between mb-5 flex-wrap gap-3 shrink-0">
+          <div>
+            <h2 class="text-xl font-semibold text-white">Notificações</h2>
+            <p class="text-sm text-slate-400 mt-1">Inserções e remoções feitas pelo acesso público.</p>
+          </div>
+          <button onclick="RequestsCtrl.exportCSV()"
+            class="flex items-center gap-2 bg-accent/20 hover:bg-accent/30 border border-accent/40 text-accent text-sm font-medium
+                   px-4 py-2 rounded-lg transition-colors">
+            <i class="fa-solid fa-file-csv"></i> Exportar CSV
+          </button>
         </div>
 
         <div class="flex gap-1 mb-5 shrink-0 border-b border-slate-700">
@@ -152,6 +159,56 @@ export const RequestsCtrl = {
           <p class="text-sm text-slate-300 leading-relaxed">${r.justification}</p>
         </div>
       </div>`;
+  },
+
+  exportCSV() {
+    const fmtDate = str => {
+      if (!str) return '';
+      const [y, m, d] = str.split('-');
+      return `${d}/${m}/${y}`;
+    };
+    const fmtAt = iso => iso
+      ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    const entries = [
+      ...AppState.insertRequests.map(r => ({ action: 'Inserção', at: r.created_at, member: r.member_name, title: r.title, task: r, justification: r.justification })),
+      ...AppState.requests.map(r => ({ action: 'Remoção', at: r.created_at, member: r.member_name, title: r.task_title, task: this._taskMeta.get(r.task_id) || {}, justification: r.justification })),
+    ].sort((a, b) => new Date(b.at) - new Date(a.at));
+
+    if (entries.length === 0) {
+      window.Toast.show('Nenhuma notificação para exportar.', 'warning');
+      return;
+    }
+
+    const BOM  = '﻿';
+    const head = ['Ação', 'Registrado em', 'Membro', 'Tarefa', 'Data agendada', 'Turno', 'Tipo', 'Prioridade', 'Horário', 'Justificativa'];
+    const rows = entries.map(e => [
+      e.action,
+      fmtAt(e.at),
+      e.member || '',
+      e.title || '',
+      fmtDate(e.task.scheduled_date),
+      SHIFT_LABEL[e.task.shift]       || e.task.shift    || '',
+      TYPE_LABEL[e.task.type]         || e.task.type     || '',
+      PRIORITY_LABEL[e.task.priority] || e.task.priority || '',
+      e.task.event_time || '',
+      e.justification   || '',
+    ]);
+
+    const csv  = BOM + [head, ...rows]
+      .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), {
+      href:     url,
+      download: `notificacoes-iss-${new Date().toLocaleDateString('sv-SE')}.csv`,
+    });
+    a.click();
+    URL.revokeObjectURL(url);
+    window.Toast.show('CSV exportado com sucesso.', 'success');
   },
 };
 window.RequestsCtrl = RequestsCtrl;
