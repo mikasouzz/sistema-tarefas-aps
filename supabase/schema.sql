@@ -51,6 +51,10 @@ create table if not exists tb_aps_tasks (
 -- CREATE POLICY "anon delete tb_aps_tasks" ON tb_aps_tasks FOR DELETE USING (true);
 -- ALTER TABLE tb_aps_task_requests DROP CONSTRAINT IF EXISTS tb_aps_task_requests_task_id_fkey;
 -- ALTER TABLE tb_aps_task_requests DROP CONSTRAINT IF EXISTS tb_aps_task_requests_task_id_key;
+-- GRANT insert, update, delete ON public.tb_aps_absences TO anon;
+-- CREATE POLICY "anon insert tb_aps_absences" ON tb_aps_absences FOR INSERT WITH CHECK (true);
+-- CREATE POLICY "anon update tb_aps_absences" ON tb_aps_absences FOR UPDATE USING (true);
+-- CREATE POLICY "anon delete tb_aps_absences" ON tb_aps_absences FOR DELETE USING (true);
 
 -- TB_APS_ABSENCES
 create table if not exists tb_aps_absences (
@@ -62,6 +66,9 @@ create table if not exists tb_aps_absences (
 
 alter table tb_aps_absences enable row level security;
 create policy "anon read tb_aps_absences"    on tb_aps_absences for select using (true);
+create policy "anon insert tb_aps_absences"  on tb_aps_absences for insert with check (true);
+create policy "anon update tb_aps_absences"  on tb_aps_absences for update using (true);
+create policy "anon delete tb_aps_absences"  on tb_aps_absences for delete using (true);
 create policy "admin manage tb_aps_absences" on tb_aps_absences for all    using (auth.role() = 'authenticated');
 
 -- TB_APS_TASK_REQUESTS
@@ -177,7 +184,7 @@ grant all    on public.tb_aps_one_on_ones to authenticated;
 
 grant select          on public.tb_aps_members       to anon;
 grant select, insert, update, delete on public.tb_aps_tasks to anon;
-grant select          on public.tb_aps_absences        to anon;
+grant select, insert, update, delete on public.tb_aps_absences to anon;
 grant select, insert  on public.tb_aps_task_requests   to anon;
 
 grant all on public.tb_aps_members       to authenticated;
