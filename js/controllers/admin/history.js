@@ -2,7 +2,7 @@ import { db } from '../../db.js';
 import { AppState } from '../../state.js';
 import { todayStr } from '../../utils/date.js';
 
-const TYPE_LABEL  = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte' };
+const TYPE_LABEL  = { operacional:'Operacional', analitica:'Analítica', estrategia:'Estratégia', treinamento:'Treinamento', reuniao:'Reunião', suporte:'Suporte', viagem:'Viagem' };
 const SHIFT_LABEL = { manha:'Manhã', tarde:'Tarde', dia_todo:'Dia todo', livre:'Livre' };
 const PAGE = 1000; // limite máximo de uma request do PostgREST/Supabase
 
@@ -131,7 +131,7 @@ export const HistoryCtrl = {
       byType[t.type].total++;
       if (t.status === 'done') byType[t.type].done++;
     }
-    const typeOrder   = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao', 'suporte'];
+    const typeOrder   = ['operacional', 'analitica', 'estrategia', 'treinamento', 'reuniao', 'suporte', 'viagem'];
     const typeEntries = typeOrder.filter(k => byType[k]).map(k => [k, byType[k]]);
 
     const byMember = {};

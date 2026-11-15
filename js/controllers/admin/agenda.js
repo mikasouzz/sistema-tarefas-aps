@@ -4,7 +4,9 @@ import { getMondayOf, toDateStr, todayStr, fmtShort, weekInputVal } from '../../
 import { TYPE_OPTS, EVENT_COLOR_OPTS } from './calendar.js';
 
 const DAY_NAMES  = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
-const TYPE_LABEL = { treinamento: 'Treinamento', reuniao: 'Reunião' };
+const TYPE_LABEL = { treinamento: 'Treinamento', reuniao: 'Reunião', viagem: 'Viagem' };
+const TRAVEL_ICON = '<i class="fa-solid fa-plane text-sky-400 text-[0.85em] mr-1" title="Viagem"></i>';
+const TRAVEL_CARD_BG = 'bg-indigo-900/40 border-indigo-700/70';
 const EVENT_COLOR_CARD_BG = {
   rosa:    'bg-pink-900/40 border-pink-700/70',
   azul:    'bg-blue-900/40 border-blue-700/70',
@@ -16,6 +18,7 @@ const EVENT_COLOR_LEGEND = [
   { v: 'azul',    l: 'Reunião',    dot: 'bg-blue-500' },
   { v: 'amarelo', l: 'Reserva', dot: 'bg-yellow-500' },
   { v: 'cinza',   l: 'Simulação ',   dot: 'bg-zinc-400' },
+  { v: 'viagem',  l: 'Viagem',       dot: 'bg-indigo-500' },
 ];
 const SHIFTS = ['manha', 'tarde'];
 const SHIFT_LABEL = { manha: 'Manhã', tarde: 'Tarde' };
@@ -53,7 +56,7 @@ export const AgendaCtrl = {
     const active = AppState.members.filter(m => m.active);
 
     const events = AppState.tasks.filter(t =>
-      (t.type === 'treinamento' || t.type === 'reuniao') &&
+      (t.type === 'treinamento' || t.type === 'reuniao' || t.type === 'viagem') &&
       t.scheduled_date >= weekStart &&
       t.scheduled_date <= weekEnd
     );
@@ -141,7 +144,7 @@ export const AgendaCtrl = {
                   ${weekDays.map(d => SHIFTS.map(shift => {
                     const dateStr    = toDateStr(d);
                     const cellEvents = events
-                      .filter(t => t.member_id === m.id && t.scheduled_date === dateStr && (t.shift === shift || t.shift === 'dia_todo'))
+                      .filter(t => t.member_id === m.id && t.scheduled_date === dateStr && (t.shift === shift || t.shift === 'dia_todo' || (t.type === 'viagem' && t.shift === 'livre')))
                       .sort((a, b) => (a.event_time || '').localeCompare(b.event_time || ''));
                     return `
                       <div class="border-t border-l border-slate-700 px-1 py-1 flex flex-col gap-0.5 min-h-[40px]">
@@ -156,14 +159,15 @@ export const AgendaCtrl = {
 
   _card(t) {
     const isPrincipal = t.priority === 'principal';
-    const cardBg      = EVENT_COLOR_CARD_BG[t.event_color] || 'bg-slate-700/60 border-slate-600/80';
+    const isTravel    = t.type === 'viagem';
+    const cardBg      = isTravel ? TRAVEL_CARD_BG : (EVENT_COLOR_CARD_BG[t.event_color] || 'bg-slate-700/60 border-slate-600/80');
     const title       = t.event_time ? `${TYPE_LABEL[t.type] || t.type} · ${t.event_time}` : (TYPE_LABEL[t.type] || t.type);
 
     return `
       <div class="${cardBg} border rounded px-1.5 py-1
                   ${isPrincipal ? 'border-l-2 border-l-violet-500' : ''}"
            title="${title}">
-        <span class="text-[11px] text-slate-300 truncate leading-tight block">${t.title}</span>
+        <span class="text-[11px] text-slate-300 truncate leading-tight block">${isTravel ? TRAVEL_ICON : ''}${t.title}</span>
       </div>`;
   },
 
@@ -303,7 +307,7 @@ export const AgendaCtrl = {
                 <select id="ag-type" onchange="AgendaCtrl._onCreateEventTypeChange()"
                   class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
                          focus:outline-none focus:border-primary transition-colors">
-                  ${TYPE_OPTS.filter(o => o.v === 'treinamento' || o.v === 'reuniao').map(o => `<option value="${o.v}" ${o.v === 'treinamento' ? 'selected' : ''}>${o.l}</option>`).join('')}
+                  ${TYPE_OPTS.filter(o => ['treinamento', 'reuniao', 'viagem'].includes(o.v)).map(o => `<option value="${o.v}" ${o.v === 'treinamento' ? 'selected' : ''}>${o.l}</option>`).join('')}
                 </select>
               </div>
 
