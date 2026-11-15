@@ -186,8 +186,9 @@ export const ScheduleCtrl = {
 
           return `
             <div class="flex flex-col gap-2 min-w-0">
-              <div class="text-center pb-2 border-b border-slate-700">
+              <div class="relative text-center pb-2 border-b border-slate-700 px-5">
                 <p class="text-sm font-medium text-white truncate" title="${m.name}">${m.name}</p>
+                ${onVacation ? '' : this._absenceBtn(m.id, dateStr, absence)}
               </div>
               ${onVacation ? `
                 <div class="flex items-center justify-center gap-1 bg-amber-900/20 border border-amber-700/40 rounded-lg px-2 py-1.5">
@@ -250,9 +251,10 @@ export const ScheduleCtrl = {
 
       return `
         <div class="flex flex-col gap-2 min-w-0">
-          <div class="text-center pb-2 border-b border-slate-700">
+          <div class="relative text-center pb-2 border-b border-slate-700">
             <p class="text-xs font-semibold ${isToday ? 'text-primary' : 'text-slate-400'}">${DAY_NAMES[i]}</p>
             <p class="text-sm font-medium ${isToday ? 'text-primary' : 'text-white'} mt-0.5">${fmtShort(day)}</p>
+            ${onVacation ? '' : this._absenceBtn(memberId, dateStr, absence)}
           </div>
           ${onVacation ? `
             <div class="flex items-center justify-center gap-1 bg-amber-900/20 border border-amber-700/40 rounded-lg px-2 py-1.5">
@@ -299,6 +301,107 @@ export const ScheduleCtrl = {
           ${cols}
         </div>
       </div>`;
+  },
+
+  _absenceBtn(memberId, dateStr, absence) {
+    return `
+      <button onclick="ScheduleCtrl.openAbsenceModal('${memberId}','${dateStr}')"
+        title="${absence ? 'Editar ausência' : 'Indicar ausência'}"
+        class="absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded transition-colors
+               ${absence ? 'text-rose-400 hover:text-rose-300' : 'text-slate-600 hover:text-rose-400'}">
+        <i class="fa-solid fa-user-slash text-[10px]"></i>
+      </button>`;
+  },
+
+  openAbsenceModal(memberId, dateStr) {
+    this._absMemberId = memberId;
+    this._absDate     = dateStr;
+    this._renderAbsenceModal();
+  },
+
+  _renderAbsenceModal() {
+    const memberId = this._absMemberId;
+    const dateStr  = this._absDate;
+    const member   = AppState.members.find(m => m.id === memberId);
+    const absence  = AppState.absences?.find(a => a.member_id === memberId && a.date === dateStr);
+    const absManha = absence?.shift === 'manha' || absence?.shift === 'dia_todo';
+    const absTarde = absence?.shift === 'tarde' || absence?.shift === 'dia_todo';
+    const [y, mo, d] = dateStr.split('-');
+
+    document.getElementById('modal-container').innerHTML = `
+      <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
+           onclick="ScheduleCtrl._absBackdrop(event)">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+             onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-user-slash text-rose-400 text-base"></i> Ausência
+            </h3>
+            <button onclick="ScheduleCtrl._closeAbsenceModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 mb-4">
+            <p class="text-sm text-white font-medium">${member?.name || '—'}</p>
+            <p class="text-xs text-slate-400 mt-0.5">${d}/${mo}/${y}</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="ScheduleCtrl.toggleAbsence('manha')"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors
+                     ${absManha ? 'bg-rose-900/40 border-rose-700 text-rose-300' : 'bg-slate-700/50 border-slate-600 text-slate-400 hover:border-rose-700 hover:text-rose-400'}">
+              <i class="fa-solid fa-sun text-xs"></i> Manhã
+            </button>
+            <button onclick="ScheduleCtrl.toggleAbsence('tarde')"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border transition-colors
+                     ${absTarde ? 'bg-rose-900/40 border-rose-700 text-rose-300' : 'bg-slate-700/50 border-slate-600 text-slate-400 hover:border-rose-700 hover:text-rose-400'}">
+              <i class="fa-solid fa-cloud-sun text-xs"></i> Tarde
+            </button>
+          </div>
+          ${absManha && absTarde ? `
+            <p class="text-xs text-rose-400 text-center mt-2 flex items-center justify-center gap-1">
+              <i class="fa-solid fa-circle-xmark"></i> Ausente o dia todo
+            </p>` : ''}
+        </div>
+      </div>`;
+  },
+
+  _closeAbsenceModal() { document.getElementById('modal-container').innerHTML = ''; },
+  _absBackdrop(e)      { if (e.target === e.currentTarget) this._closeAbsenceModal(); },
+
+  async toggleAbsence(clickedShift) {
+    const memberId = this._absMemberId;
+    const dateStr  = this._absDate;
+    const existing = AppState.absences.find(a => a.member_id === memberId && a.date === dateStr);
+
+    let newShift = null;
+    if (!existing) {
+      newShift = clickedShift;
+    } else if (existing.shift === 'dia_todo') {
+      newShift = clickedShift === 'manha' ? 'tarde' : 'manha';
+    } else if (existing.shift === clickedShift) {
+      newShift = null; // desligar
+    } else {
+      newShift = 'dia_todo'; // ligar o outro turno também
+    }
+
+    if (existing && newShift === null) {
+      const { error } = await db.from('tb_aps_absences').delete().eq('id', existing.id);
+      if (error) { window.Toast.show('Erro ao remover ausência.', 'error'); return; }
+      setAppState({ absences: AppState.absences.filter(a => a.id !== existing.id) });
+    } else if (existing) {
+      const { error } = await db.from('tb_aps_absences').update({ shift: newShift }).eq('id', existing.id);
+      if (error) { window.Toast.show('Erro ao atualizar ausência.', 'error'); return; }
+      existing.shift = newShift;
+    } else {
+      const id = window.App.generateId();
+      const { error } = await db.from('tb_aps_absences').insert({ id, member_id: memberId, date: dateStr, shift: newShift });
+      if (error) { window.Toast.show('Erro ao registrar ausência.', 'error'); return; }
+      AppState.absences.push({ id, member_id: memberId, date: dateStr, shift: newShift });
+    }
+
+    this._render();
+    this._renderAbsenceModal();
   },
 
   _miniCard(t) {
