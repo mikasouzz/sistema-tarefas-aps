@@ -34,26 +34,86 @@ const INDICATOR_TYPES = [
   { type: 'treinamento', label: 'Treinamentos', icon: 'fa-chalkboard-user', iconClass: 'bg-emerald-900/50 border-emerald-700 text-emerald-300' },
   { type: 'reuniao',     label: 'Reuniões',     icon: 'fa-users',           iconClass: 'bg-rose-900/50 border-rose-700 text-rose-300' },
 ];
+
+// Avança/retrocede `delta` dias úteis a partir de uma data 'YYYY-MM-DD', pulando sábado e domingo.
+function shiftWorkday(dateStr, delta) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt   = new Date(Date.UTC(y, m - 1, d));
+  const step = delta < 0 ? -1 : 1;
+  let left   = Math.abs(delta);
+  while (left > 0) {
+    dt.setUTCDate(dt.getUTCDate() + step);
+    const wd = dt.getUTCDay();
+    if (wd !== 0 && wd !== 6) left--;
+  }
+  return dt.toISOString().slice(0, 10);
+}
+
 export const TodayCtrl = {
   tasks: [],
   _container: null,
   _activeMemberId: null,
+  _date: null,
 
   async init(container) {
     this._container = container;
-    container.innerHTML = `
+    this._date = todayStr();
+    await this._load();
+  },
+
+  async _load() {
+    this._container.innerHTML = `
       <div class="flex items-center gap-2 text-slate-500 py-12 justify-center">
         <i class="fa-solid fa-spinner fa-spin"></i> Carregando tarefas…
       </div>`;
-    const today = todayStr();
     const { data, error } = await db
       .from('tb_aps_tasks')
       .select('*, tb_aps_members(name)')
-      .eq('scheduled_date', today)
+      .eq('scheduled_date', this._date)
       .not('member_id', 'is', null);
     if (error) { window.Toast.show('Erro ao carregar tarefas.', 'error'); return; }
     this.tasks = data || [];
     this._render();
+  },
+
+  async shiftDay(delta) {
+    this._date = shiftWorkday(this._date, delta);
+    await this._load();
+  },
+
+  async goToday() {
+    this._date = todayStr();
+    await this._load();
+  },
+
+  _isToday() {
+    return this._date === todayStr();
+  },
+
+  _dateLabel() {
+    const [y, m, d] = this._date.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('pt-BR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+    });
+  },
+
+  _dateNav() {
+    return `
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="TodayCtrl.shiftDay(-1)" title="Dia anterior"
+          class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">
+          <i class="fa-solid fa-chevron-left text-xs"></i>
+        </button>
+        <button onclick="TodayCtrl.goToday()"
+          class="px-3 py-1.5 rounded-lg text-sm transition-colors
+                 ${this._isToday() ? 'bg-primary text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}">
+          Hoje
+        </button>
+        <button onclick="TodayCtrl.shiftDay(1)" title="Próximo dia"
+          class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">
+          <i class="fa-solid fa-chevron-right text-xs"></i>
+        </button>
+      </div>`;
   },
 
   _noticesPanel() {
@@ -93,17 +153,20 @@ export const TodayCtrl = {
   _render() {
     const c = this._container;
 
-    const today = new Date().toLocaleDateString('pt-BR', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    });
+    const today = this._dateLabel();
 
     if (this.tasks.length === 0) {
       c.innerHTML = `
         <div class="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 min-h-0">
-          <div class="text-center py-20 text-slate-500">
-            <i class="fa-solid fa-calendar-check text-5xl mb-4 block opacity-40"></i>
-            <p class="text-lg">Nenhuma tarefa para hoje.</p>
-            <p class="text-sm mt-1 capitalize text-slate-600">${today}</p>
+          <div class="flex flex-col min-h-0">
+            <div class="flex items-start justify-between gap-3 flex-wrap shrink-0">
+              <h2 class="text-xl font-semibold text-white capitalize">${today}</h2>
+              ${this._dateNav()}
+            </div>
+            <div class="text-center py-20 text-slate-500">
+              <i class="fa-solid fa-calendar-check text-5xl mb-4 block opacity-40"></i>
+              <p class="text-lg">Nenhuma tarefa ${this._isToday() ? 'para hoje' : 'para este dia'}.</p>
+            </div>
           </div>
           ${this._noticesPanel()}
         </div>`;
@@ -122,12 +185,15 @@ export const TodayCtrl = {
 
         <!-- Tarefas -->
         <div class="flex flex-col min-h-0">
-          <div class="mb-5 shrink-0">
-            <h2 class="text-xl font-semibold text-white capitalize">${today}</h2>
-            <p class="text-slate-400 text-sm mt-1">
-              ${groups.length} membro${groups.length !== 1 ? 's' : ''} ·
-              ${totalAll} tarefa${totalAll !== 1 ? 's' : ''} agendada${totalAll !== 1 ? 's' : ''}
-            </p>
+          <div class="mb-5 shrink-0 flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h2 class="text-xl font-semibold text-white capitalize">${today}</h2>
+              <p class="text-slate-400 text-sm mt-1">
+                ${groups.length} membro${groups.length !== 1 ? 's' : ''} ·
+                ${totalAll} tarefa${totalAll !== 1 ? 's' : ''} agendada${totalAll !== 1 ? 's' : ''}
+              </p>
+            </div>
+            ${this._dateNav()}
           </div>
 
           <div class="mb-6 shrink-0 bg-slate-800 border border-slate-700 rounded-xl p-4">
@@ -238,7 +304,7 @@ export const TodayCtrl = {
           </div>
           <div class="p-3 flex flex-col gap-2">
             ${people.length === 0
-              ? `<p class="text-center text-slate-500 text-sm py-8">Ninguém nesta atividade hoje.</p>`
+              ? `<p class="text-center text-slate-500 text-sm py-8">Ninguém nesta atividade ${this._isToday() ? 'hoje' : 'neste dia'}.</p>`
               : people.map(p => `
                   <div class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
                     <div class="min-w-0">
@@ -283,7 +349,7 @@ export const TodayCtrl = {
   _memberRow(group) {
     const member     = AppState.members.find(m => m.id === group.memberId);
     const onVacation = member?.on_vacation;
-    const absence    = AppState.absences?.find(a => a.member_id === group.memberId && a.date === todayStr());
+    const absence    = AppState.absences?.find(a => a.member_id === group.memberId && a.date === this._date);
 
     const initial   = group.name.charAt(0).toUpperCase();
     const total     = group.tasks.length;
@@ -341,9 +407,9 @@ export const TodayCtrl = {
     const vacEnd     = member?.vacation_end;
     const fmtDate    = s => { if (!s) return ''; const [,mo,d] = s.split('-'); return `${d}/${mo}`; };
 
-    const absence    = AppState.absences?.find(a => a.member_id === memberId && a.date === todayStr());
+    const absence    = AppState.absences?.find(a => a.member_id === memberId && a.date === this._date);
     const ABSENCE_LABEL = { manha: 'pela manhã', tarde: 'pela tarde', dia_todo: 'o dia todo' };
-    const oneOnOneToday = AppState.oneOnOnes?.find(o => o.member_id === memberId && o.date === todayStr());
+    const oneOnOneToday = AppState.oneOnOnes?.find(o => o.member_id === memberId && o.date === this._date);
 
     const dividerClass = onVacation ? 'border-amber-700/50' : absence ? 'border-rose-700/50' : 'border-slate-700';
 
@@ -379,7 +445,7 @@ export const TodayCtrl = {
           <div class="px-4 py-2 bg-cyan-900/20 border-b border-cyan-700/40 flex items-center gap-1.5">
             <i class="fa-solid fa-comments text-cyan-400 text-xs"></i>
             <span class="text-xs text-cyan-300">
-              Hoje você tem Reunião de one a one${oneOnOneToday.time ? ` às ${oneOnOneToday.time.slice(0, 5)}` : ''}
+              ${this._isToday() ? 'Hoje você tem' : 'Neste dia você tem'} Reunião de one a one${oneOnOneToday.time ? ` às ${oneOnOneToday.time.slice(0, 5)}` : ''}
             </span>
             <i class="fa-solid fa-bell fa-shake text-amber-400 text-xs"></i>
           </div>` : ''}
