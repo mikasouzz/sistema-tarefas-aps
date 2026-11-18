@@ -414,6 +414,10 @@ export const ScheduleCtrl = {
         <div class="flex items-start justify-between gap-1">
           <span class="text-slate-200 leading-tight ${done ? 'line-through text-slate-500' : ''}">${t.type === 'viagem' ? TRAVEL_ICON : ''}${t.title}</span>
           <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <button onclick="ScheduleCtrl.openEditModal('${t.id}')" title="Editar tarefa"
+              class="text-xs transition-colors text-slate-500 hover:text-white">
+              <i class="fa-solid fa-pen"></i>
+            </button>
             <button onclick="ScheduleCtrl.openCopyModal('${t.id}')" title="Copiar para outro dia"
               class="text-xs transition-colors text-slate-500 hover:text-white">
               <i class="fa-solid fa-copy"></i>
@@ -655,6 +659,88 @@ export const ScheduleCtrl = {
     window.Toast.show(`Tarefa copiada para ${d}/${m}/${y}.`, 'success');
   },
 
+  openEditModal(taskId) {
+    const task = AppState.tasks.find(t => t.id === taskId);
+    if (task) this._openTaskModal(task);
+  },
+
+  _readTaskForm() {
+    const type     = document.getElementById('ins-type').value || null;
+    const showTime = ['treinamento', 'reuniao'].includes(type);
+    const memberId = document.getElementById('ins-member').value;
+    const checked  = document.querySelectorAll('#ins-members-list input[type="checkbox"]:checked');
+    return {
+      memberId,
+      memberIds: [...new Set([memberId, ...Array.from(checked).map(cb => cb.value)])],
+      fields: {
+        title:          document.getElementById('ins-title').value.trim(),
+        type,
+        shift:          document.getElementById('ins-shift').value || null,
+        priority:       document.getElementById('ins-priority').value || null,
+        scheduled_date: document.getElementById('ins-date').value || null,
+        event_time:     showTime ? (document.getElementById('ins-time').value || null) : null,
+        event_color:    showTime ? (document.getElementById('ins-color').value || null) : null,
+      },
+      justification: document.getElementById('ins-justification').value.trim() || null,
+    };
+  },
+
+  async _submitEdit(e, taskId) {
+    e.preventDefault();
+    const task = AppState.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const { memberId, memberIds, fields, justification } = this._readTaskForm();
+    const nameOf = id => AppState.members.find(m => m.id === id)?.name || '—';
+
+    // Tarefas atuais do grupo (ou só a própria). A tarefa editada passa a ser do membro selecionado;
+    // as demais são mantidas se o membro continuar participando, removidas caso contrário.
+    const current = task.group_id ? AppState.tasks.filter(t => t.group_id === task.group_id) : [task];
+    const keep = { [memberId]: task.id };
+    const removeIds = [];
+    for (const t of current) {
+      if (t.id === task.id) continue;
+      if (memberIds.includes(t.member_id) && !keep[t.member_id]) keep[t.member_id] = t.id;
+      else removeIds.push(t.id);
+    }
+    const addIds  = memberIds.filter(mid => !keep[mid]);
+    const groupId = memberIds.length > 1 ? (task.group_id || window.App.generateId()) : null;
+    const patch   = { ...fields, group_id: groupId };
+
+    const { error } = await db.from('tb_aps_tasks').update(patch).in('id', Object.values(keep));
+    if (error) { window.Toast.show('Erro ao salvar tarefa.', 'error'); return; }
+    if (task.member_id !== memberId) {
+      const { error: mErr } = await db.from('tb_aps_tasks').update({ member_id: memberId }).eq('id', task.id);
+      if (mErr) { window.Toast.show('Erro ao alterar membro.', 'error'); return; }
+    }
+    if (removeIds.length) {
+      const { error: dErr } = await db.from('tb_aps_tasks').delete().in('id', removeIds);
+      if (dErr) { window.Toast.show('Erro ao remover participantes.', 'error'); return; }
+    }
+    if (addIds.length) {
+      const { error: iErr } = await db.from('tb_aps_tasks').insert(addIds.map(mid => ({
+        id: window.App.generateId(), member_id: mid, ...patch, status: 'pending',
+      })));
+      if (iErr) { window.Toast.show('Erro ao adicionar participantes.', 'error'); return; }
+    }
+
+    const noticeRows = memberIds.map(mid => ({
+      id: window.App.generateId(), member_id: mid, member_name: nameOf(mid), ...fields,
+      justification: justification ? `Edição de tarefa: ${justification}` : 'Edição de tarefa',
+      status: 'accepted',
+    }));
+    const { error: nErr } = await db.from('tb_aps_task_insert_requests').insert(noticeRows);
+    if (nErr) { window.Toast.show('Erro ao registrar notificação.', 'error'); }
+    const createdAt = new Date().toISOString();
+    setAppState({
+      insertRequests: [...AppState.insertRequests, ...noticeRows.map(n => ({ ...n, created_at: createdAt }))],
+    });
+
+    await window.App.loadWeekTasks(this._weekStart);
+    this._closeInsertModal();
+    this._render();
+    window.Toast.show(memberIds.length > 1 ? `Tarefa atualizada para ${memberIds.length} membros.` : 'Tarefa atualizada.', 'success');
+  },
+
   selectMember(id) {
     setAppState({ selectedMemberId: id });
     this._render();
@@ -714,25 +800,37 @@ export const ScheduleCtrl = {
   },
 
   openInsertModal() {
+    this._openTaskModal(null);
+  },
+
+  _openTaskModal(task) {
+    const isEdit = !!task;
     const active = AppState.members.filter(m => m.active);
-    const defaultMemberId = this._viewMode === 'individual' ? (AppState.selectedMemberId || '') : '';
+    const defaultMemberId = isEdit
+      ? task.member_id
+      : (this._viewMode === 'individual' ? (AppState.selectedMemberId || '') : '');
+    const groupMemberIds = isEdit && task.group_id
+      ? AppState.tasks.filter(t => t.group_id === task.group_id).map(t => t.member_id)
+      : [];
+    const needTime = isEdit && ['treinamento', 'reuniao'].includes(task.type);
     const today = new Date().toISOString().slice(0, 10);
+    const sel = (field, v) => isEdit && task[field] === v ? 'selected' : '';
     document.getElementById('modal-container').innerHTML = `
       <div class="fixed inset-0 bg-black/70 z-40 flex items-center justify-center p-4"
            onclick="ScheduleCtrl._insertBackdrop(event)">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]"
              onclick="event.stopPropagation()">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-white">Nova tarefa</h3>
+            <h3 class="text-lg font-bold text-white">${isEdit ? 'Editar tarefa' : 'Nova tarefa'}</h3>
             <button onclick="ScheduleCtrl._closeInsertModal()"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
-          <form onsubmit="ScheduleCtrl._submitInsertRequest(event)">
+          <form onsubmit="${isEdit ? `ScheduleCtrl._submitEdit(event,'${task.id}')` : 'ScheduleCtrl._submitInsertRequest(event)'}">
             <div class="mb-3">
               <label class="block text-sm text-slate-400 mb-1.5">Membro <span class="text-rose-400">*</span></label>
-              <select id="ins-member" required
+              <select id="ins-member" required onchange="ScheduleCtrl._syncInsertMembers()"
                 class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                        focus:outline-none focus:border-primary transition-colors text-sm">
                 <option value="">—</option>
@@ -742,6 +840,7 @@ export const ScheduleCtrl = {
             <div class="mb-3">
               <label class="block text-sm text-slate-400 mb-1.5">Título <span class="text-rose-400">*</span></label>
               <input id="ins-title" type="text" required maxlength="120"
+                value="${isEdit ? task.title.replace(/"/g, '&quot;') : ''}"
                 placeholder="Nome da tarefa…"
                 class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
                        focus:outline-none focus:border-primary transition-colors text-sm">
@@ -753,13 +852,7 @@ export const ScheduleCtrl = {
                   class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                          focus:outline-none focus:border-primary transition-colors text-sm">
                   <option value="">—</option>
-                  <option value="operacional">Operacional</option>
-                  <option value="analitica">Analítica</option>
-                  <option value="estrategia">Estratégia</option>
-                  <option value="treinamento">Treinamento</option>
-                  <option value="reuniao">Reunião</option>
-                  <option value="suporte">Suporte</option>
-                  <option value="viagem">Viagem</option>
+                  ${Object.entries(TYPE_LABEL).map(([v, l]) => `<option value="${v}" ${sel('type', v)}>${l}</option>`).join('')}
                 </select>
               </div>
               <div>
@@ -768,10 +861,10 @@ export const ScheduleCtrl = {
                   class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                          focus:outline-none focus:border-primary transition-colors text-sm">
                   <option value="">—</option>
-                  <option value="manha">Manhã</option>
-                  <option value="tarde">Tarde</option>
-                  <option value="dia_todo">Dia todo</option>
-                  <option value="livre">Livre</option>
+                  <option value="manha" ${sel('shift', 'manha')}>Manhã</option>
+                  <option value="tarde" ${sel('shift', 'tarde')}>Tarde</option>
+                  <option value="dia_todo" ${sel('shift', 'dia_todo')}>Dia todo</option>
+                  <option value="livre" ${sel('shift', 'livre')}>Livre</option>
                 </select>
               </div>
             </div>
@@ -782,35 +875,55 @@ export const ScheduleCtrl = {
                   class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                          focus:outline-none focus:border-primary transition-colors text-sm">
                   <option value="">—</option>
-                  <option value="principal">Principal</option>
-                  <option value="secundaria">Secundária</option>
+                  <option value="principal" ${sel('priority', 'principal')}>Principal</option>
+                  <option value="secundaria" ${sel('priority', 'secundaria')}>Secundária</option>
                 </select>
               </div>
               <div>
                 <label class="block text-sm text-slate-400 mb-1.5">Data</label>
-                <input id="ins-date" type="date" min="${today}"
+                <input id="ins-date" type="date" ${isEdit ? `value="${task.scheduled_date || ''}"` : `min="${today}"`}
                   class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                          focus:outline-none focus:border-primary transition-colors text-sm">
               </div>
             </div>
-            <div id="ins-time-wrap" class="mb-3 hidden">
+            <div id="ins-time-wrap" class="mb-3 ${needTime ? '' : 'hidden'}">
               <label class="block text-sm text-slate-400 mb-1.5">Horário do evento</label>
-              <input id="ins-time" type="time"
+              <input id="ins-time" type="time" value="${isEdit ? (task.event_time || '') : ''}"
                 class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                        focus:outline-none focus:border-primary transition-colors text-sm">
             </div>
-            <div id="ins-color-wrap" class="mb-3 hidden">
+            <div id="ins-color-wrap" class="mb-3 ${needTime ? '' : 'hidden'}">
               <label class="block text-sm text-slate-400 mb-1.5">Cor na agenda</label>
               <select id="ins-color"
                 class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white
                        focus:outline-none focus:border-primary transition-colors text-sm">
-                ${EVENT_COLOR_OPTS.map(o => `<option value="${o.v}">${o.l}</option>`).join('')}
+                ${EVENT_COLOR_OPTS.map(o => `<option value="${o.v}" ${sel('event_color', o.v)}>${o.l}</option>`).join('')}
               </select>
+            </div>
+            <div id="ins-members-wrap" class="mb-3">
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-sm text-slate-400">Participantes</label>
+                <div class="flex gap-2">
+                  <button type="button" onclick="ScheduleCtrl._toggleAllInsertMembers(true)"
+                    class="text-[10px] text-primary hover:text-violet-300 transition-colors">Selecionar todos</button>
+                  <span class="text-slate-600 text-[10px]">|</span>
+                  <button type="button" onclick="ScheduleCtrl._toggleAllInsertMembers(false)"
+                    class="text-[10px] text-slate-400 hover:text-slate-200 transition-colors">Desmarcar todos</button>
+                </div>
+              </div>
+              <div id="ins-members-list" class="flex flex-col gap-0.5 max-h-36 overflow-y-auto bg-slate-700/50 border border-slate-600 rounded-lg p-1.5">
+                ${active.map(m => `
+                  <label data-member-row="${m.id}" class="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-600/50 cursor-pointer select-none">
+                    <input type="checkbox" value="${m.id}" ${groupMemberIds.includes(m.id) ? 'checked' : ''} class="accent-primary shrink-0">
+                    <span class="text-sm text-slate-300 truncate">${m.name}</span>
+                    <span data-member-tag class="text-[10px] text-slate-500 ml-auto shrink-0 hidden">membro selecionado</span>
+                  </label>`).join('')}
+              </div>
             </div>
             <div class="mb-4">
               <label class="block text-sm text-slate-400 mb-1.5">Justificativa</label>
               <textarea id="ins-justification" rows="3" maxlength="200"
-                placeholder="Por que esta tarefa precisa ser adicionada…"
+                placeholder="${isEdit ? 'Por que esta tarefa precisa ser alterada…' : 'Por que esta tarefa precisa ser adicionada…'}"
                 class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500
                        focus:outline-none focus:border-primary transition-colors resize-none text-sm"></textarea>
             </div>
@@ -821,13 +934,32 @@ export const ScheduleCtrl = {
               </button>
               <button type="submit"
                 class="flex-1 bg-primary hover:bg-primary/90 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
-                Adicionar tarefa
+                ${isEdit ? 'Salvar alterações' : 'Adicionar tarefa'}
               </button>
             </div>
           </form>
         </div>
       </div>`;
+    this._syncInsertMembers();
     setTimeout(() => document.getElementById('ins-title')?.focus(), 50);
+  },
+
+  _syncInsertMembers() {
+    const memberId = document.getElementById('ins-member')?.value;
+    document.querySelectorAll('#ins-members-list [data-member-row]').forEach(row => {
+      const isMain = row.dataset.memberRow === memberId;
+      const cb     = row.querySelector('input[type="checkbox"]');
+      if (isMain) cb.checked = true;
+      cb.disabled = isMain;
+      row.classList.toggle('opacity-60', isMain);
+      row.classList.toggle('cursor-default', isMain);
+      row.querySelector('[data-member-tag]').classList.toggle('hidden', !isMain);
+    });
+  },
+
+  _toggleAllInsertMembers(checked) {
+    document.querySelectorAll('#ins-members-list input[type="checkbox"]:not(:disabled)')
+      .forEach(cb => { cb.checked = checked; });
   },
 
   _closeInsertModal() {
@@ -849,53 +981,41 @@ export const ScheduleCtrl = {
 
   async _submitInsertRequest(e) {
     e.preventDefault();
-    const memberId    = document.getElementById('ins-member').value;
-    const member       = AppState.members.find(m => m.id === memberId);
-    const memberName   = member?.name || '—';
-    const title        = document.getElementById('ins-title').value.trim();
-    const type         = document.getElementById('ins-type').value || null;
-    const shift        = document.getElementById('ins-shift').value || null;
-    const priority     = document.getElementById('ins-priority').value || null;
-    const scheduled_date = document.getElementById('ins-date').value || null;
-    const showTime     = ['treinamento', 'reuniao'].includes(type);
-    const event_time   = showTime ? (document.getElementById('ins-time').value || null) : null;
-    const event_color  = showTime ? (document.getElementById('ins-color').value || null) : null;
-    const justification = document.getElementById('ins-justification').value.trim() || null;
-    const id           = window.App.generateId();
-    const taskId       = window.App.generateId();
+    const { memberIds, fields, justification } = this._readTaskForm();
+    const { title, type, shift, priority, scheduled_date, event_time, event_color } = fields;
+    const groupId = memberIds.length > 1 ? window.App.generateId() : null;
+    const nameOf  = id => AppState.members.find(m => m.id === id)?.name || '—';
 
-    const taskPayload = {
-      id: taskId, member_id: memberId, title, type, shift, priority,
-      scheduled_date, event_time, event_color, status: 'pending',
-    };
-    const { error: taskErr } = await db.from('tb_aps_tasks').insert(taskPayload);
+    const taskRows = memberIds.map(mid => ({
+      id: window.App.generateId(), member_id: mid, title, type, shift, priority,
+      scheduled_date, event_time, event_color, group_id: groupId, status: 'pending',
+    }));
+    const { error: taskErr } = await db.from('tb_aps_tasks').insert(taskRows);
     if (taskErr) { window.Toast.show('Erro ao criar tarefa.', 'error'); return; }
 
-    const { error } = await db.from('tb_aps_task_insert_requests').insert({
-      id, member_id: memberId, member_name: memberName,
+    const noticeRows = memberIds.map(mid => ({
+      id: window.App.generateId(), member_id: mid, member_name: nameOf(mid),
       title, type, shift, priority, scheduled_date, event_time, event_color, justification,
       status: 'accepted',
-    });
+    }));
+    const { error } = await db.from('tb_aps_task_insert_requests').insert(noticeRows);
     if (error) { window.Toast.show('Erro ao registrar notificação.', 'error'); }
 
     const weekStart = toDateStr(getWeekDays(this._weekStart)[0]);
     const weekEnd    = toDateStr(getWeekDays(this._weekStart)[4]);
     const inCurrentWeek = scheduled_date && scheduled_date >= weekStart && scheduled_date <= weekEnd;
+    const createdAt = new Date().toISOString();
 
     setAppState({
       tasks: inCurrentWeek
-        ? [...AppState.tasks, { ...taskPayload, tb_aps_members: { name: memberName } }]
+        ? [...AppState.tasks, ...taskRows.map(t => ({ ...t, tb_aps_members: { name: nameOf(t.member_id) } }))]
         : AppState.tasks,
-      insertRequests: [...AppState.insertRequests, {
-        id, member_id: memberId, member_name: memberName,
-        title, type, shift, priority, scheduled_date, event_time, event_color, justification,
-        status: 'accepted', created_at: new Date().toISOString(),
-      }],
+      insertRequests: [...AppState.insertRequests, ...noticeRows.map(n => ({ ...n, created_at: createdAt }))],
     });
 
     this._closeInsertModal();
     this._render();
-    window.Toast.show('Tarefa adicionada.', 'success');
+    window.Toast.show(taskRows.length > 1 ? `Evento criado para ${taskRows.length} membros.` : 'Tarefa adicionada.', 'success');
   },
 };
 window.ScheduleCtrl = ScheduleCtrl;
