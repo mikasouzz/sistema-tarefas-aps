@@ -672,7 +672,7 @@ export const CalendarCtrl = {
         </select>
       </div>
       ${isNew ? `
-      <div id="${pid}cal-members-wrap" class="hidden">
+      <div id="${pid}cal-members-wrap">
         <div class="flex items-center justify-between mb-1.5">
           <label class="text-xs text-slate-400">Participantes</label>
           <div class="flex gap-2">
@@ -791,9 +791,7 @@ export const CalendarCtrl = {
     const needs = type === 'treinamento' || type === 'reuniao';
     wrap?.classList.toggle('hidden', !needs);
     if (input) input.required = needs;
-    document.getElementById(`${prefix}cal-color-wrap`)?.classList.toggle('hidden', !needs);
-    document.getElementById(`${prefix}cal-members-wrap`)?.classList.toggle('hidden', !needs);
-  },
+    document.getElementById(`${prefix}cal-color-wrap`)?.classList.toggle('hidden', !needs);  },
 
   closeCell() {
     document.getElementById('modal-container').innerHTML = '';
